@@ -36,6 +36,7 @@ class OpenAiTranscriber(
     // Node.js mental model: an async function that awaits HTTP/network work.
     override suspend fun transcribe(audio: AudioBlob): TranscriptionResult {
         val stored = blobStore.get(audio.key)
+        val ext = extensionForMimeType(audio.mimeType)
         lateinit var response: HttpResponse
         var status = 0
         val duration = measureTimeMillis {
@@ -47,7 +48,7 @@ class OpenAiTranscriber(
                         "file",
                         Headers.build {
                             append(HttpHeaders.ContentType, audio.mimeType)
-                            append(HttpHeaders.ContentDisposition, "filename=\"thought\"")
+                            append(HttpHeaders.ContentDisposition, "filename=\"thought.$ext\"")
                         },
                         stored.contentLength ?: audio.sizeBytes,
                     ) { stored.bytes.asInput() }
@@ -61,6 +62,15 @@ class OpenAiTranscriber(
         if (!response.status.isSuccess()) error("Whisper failed with status ${response.status.value}")
         return TranscriptionResult(response.body<WhisperResponse>().text, "whisper-1")
     }
+}
+
+private fun extensionForMimeType(mimeType: String): String = when {
+    mimeType.startsWith("audio/webm") -> "webm"
+    mimeType.startsWith("audio/mp4") -> "mp4"
+    mimeType.startsWith("audio/mpeg") -> "mp3"
+    mimeType.startsWith("audio/wav") -> "wav"
+    mimeType.startsWith("audio/ogg") -> "ogg"
+    else -> "webm"
 }
 
 @Serializable
