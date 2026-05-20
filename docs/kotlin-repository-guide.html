@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thought Box Kotlin Repository Guide</title>
+  <style>
+    :root {
+      --bg: #f6f7f2;
+      --paper: #ffffff;
+      --ink: #181a17;
+      --muted: #666b60;
+      --line: #d9ddd2;
+      --accent: #275d55;
+      --accent-2: #8a4a2b;
+      --code: #eef1ea;
+      --warn: #fff4d7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 28px;
+    }
+
+    nav {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    nav strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 0;
+      font-size: 14px;
+    }
+
+    nav a:hover { color: var(--accent); }
+
+    main {
+      min-width: 0;
+    }
+
+    header {
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 { line-height: 1.15; margin: 0; }
+    h1 { font-size: clamp(30px, 4vw, 48px); letter-spacing: 0; }
+    h2 { font-size: 24px; margin-bottom: 12px; }
+    h3 { font-size: 17px; margin: 18px 0 8px; }
+
+    p { margin: 8px 0; }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 24px;
+      margin-bottom: 18px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 760px;
+      margin-top: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcf8;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      color: white;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent-2);
+      background: var(--warn);
+      padding: 12px 14px;
+      border-radius: 6px;
+      margin: 12px 0;
+    }
+
+    code {
+      background: var(--code);
+      border: 1px solid #dfe4d9;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      background: #20241f;
+      color: #eef5e8;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { color: var(--accent); }
+
+    ul, ol { padding-left: 20px; }
+    li { margin: 5px 0; }
+
+    .flow {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #fbfcf8;
+    }
+
+    .step strong {
+      color: var(--accent);
+      margin-right: 6px;
+    }
+
+    @media (max-width: 860px) {
+      .page { grid-template-columns: 1fr; }
+      nav { position: static; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav>
+      <strong>Guide</strong>
+      <a href="#purpose">Purpose</a>
+      <a href="#map">Repository Map</a>
+      <a href="#runtime">Runtime Path</a>
+      <a href="#packages">Kotlin Packages</a>
+      <a href="#data">Database</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#testing">Tests</a>
+      <a href="#ops">Build and Ops</a>
+      <a href="#frontend">Frontend Touchpoint</a>
+      <a href="#learn">What to Learn</a>
+    </nav>
+
+    <main>
+      <header>
+        <h1>Thought Box Kotlin Repository Guide</h1>
+        <p class="lead">
+          This document explains the Kotlin backend and the repository structure created for Thought Box:
+          how the app boots, where each responsibility lives, how requests move through the code,
+          and what files matter while learning Kotlin/JVM development.
+        </p>
+      </header>
+
+      <section id="purpose">
+        <h2>Purpose</h2>
+        <p>
+          The repository is a small production-shaped Kotlin service plus a Next.js PWA. The backend
+          receives dictated audio, stores it, transcribes it with Whisper, enriches the transcript with
+          GPT, stores metadata in Postgres, and exposes JSON endpoints to the frontend.
+        </p>
+        <div class="callout">
+          Core learning axis: Kotlin + Gradle + Ktor + coroutines + raw SQL + JVM deployment.
+          No ORM, no official OpenAI SDK, no queue, no integration tests in v1.
+        </div>
+      </section>
+
+      <section id="map">
+        <h2>Repository Map</h2>
+        <pre><code>.
+├── build.gradle.kts              Kotlin/Gradle build definition
+├── settings.gradle.kts           Gradle project name + repositories
+├── gradle/libs.versions.toml     Central dependency/version catalog
+├── gradlew                       Thin local launcher for Gradle
+├── Dockerfile                    Backend container image
+├── docker-compose.yml            Local Postgres + MinIO
+├── .env.example                  Required runtime env vars
+├── .github/workflows/            CI + manual backend deploy
+├── src/main/kotlin/com/thoughtbox
+│   ├── Application.kt            Backend entrypoint and dependency wiring
+│   ├── config/                   Env parsing into typed config
+│   ├── db/                       Flyway, Hikari, kotliquery repository
+│   ├── domain/                   Domain enums and data classes
+│   ├── enrichment/               GPT enrichment interface + implementation
+│   ├── http/                     Ktor routes and response DTOs
+│   ├── observability/            JSON logs + Sentry setup
+│   ├── pipeline/                 Coroutine worker, recovery, retries
+│   ├── storage/                  BlobStore interface + S3 implementation
+│   ├── transcription/            Whisper interface + implementation
+│   ├── user/                     Current-user resolver
+│   └── validation/               Pure validation/parsing helpers
+├── src/main/resources
+│   ├── db/migration/             Flyway SQL migrations
+│   └── logback.xml               JSON stdout logging config
+├── src/test/kotlin/              Unit tests for pure/backend logic
+├── apps/web/                     Next.js PWA
+└── docs/                         PRD, issues, setup docs, this guide</code></pre>
+      </section>
+
+      <section id="runtime">
+        <h2>Runtime Path</h2>
+        <p>The service starts in <code>Application.kt</code>. That file is the composition root: it creates concrete implementations and passes them into route/pipeline code.</p>
+        <div class="flow">
+          <div class="step"><strong>1.</strong><code>Config.fromEnv()</code> reads environment variables and validates required settings.</div>
+          <div class="step"><strong>2.</strong>Ktor Netty starts on <code>PORT</code>.</div>
+          <div class="step"><strong>3.</strong>Content negotiation, CORS, request logging, and Sentry are installed.</div>
+          <div class="step"><strong>4.</strong>Flyway applies SQL migrations from <code>src/main/resources/db/migration</code>.</div>
+          <div class="step"><strong>5.</strong>Hikari creates a Postgres connection pool.</div>
+          <div class="step"><strong>6.</strong>Concrete modules are wired: repository, S3 store, Whisper transcriber, GPT enricher.</div>
+          <div class="step"><strong>7.</strong><code>StartupRecovery</code> unsticks interrupted rows.</div>
+          <div class="step"><strong>8.</strong><code>ThoughtPipeline</code> starts as a coroutine worker.</div>
+          <div class="step"><strong>9.</strong>Ktor routes begin serving HTTP requests.</div>
+        </div>
+      </section>
+
+      <section id="packages">
+        <h2>Kotlin Packages</h2>
+        <div class="grid">
+          <div class="card">
+            <span class="tag">entrypoint</span>
+            <h3><code>Application.kt</code></h3>
+            <p>
+              Main function and app wiring. This is where interfaces become concrete classes.
+              Good first file when asking: "what runs when the app starts?"
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">config</span>
+            <h3><code>config/Config.kt</code></h3>
+            <p>
+              Converts raw env vars into typed Kotlin data classes. Elsewhere in the app should use
+              <code>Config</code>, not <code>System.getenv()</code>.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">domain</span>
+            <h3><code>domain/Models.kt</code></h3>
+            <p>
+              Core vocabulary: <code>Status</code>, <code>Category</code>, <code>Thought</code>,
+              <code>ThoughtEnrichment</code>, and audio types. Also contains the status state machine.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">http</span>
+            <h3><code>http/Routes.kt</code>, <code>Dto.kt</code></h3>
+            <p>
+              Ktor handlers. Thin layer: parse request, call repository/storage, respond with DTOs.
+              Business rules stay in validators, repository, and pipeline.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">db</span>
+            <h3><code>db/Database.kt</code>, <code>ThoughtRepository.kt</code></h3>
+            <p>
+              Flyway migration runner, Hikari connection pool, and raw SQL via kotliquery.
+              This is the database boundary.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">storage</span>
+            <h3><code>storage/BlobStore.kt</code>, <code>S3BlobStore.kt</code></h3>
+            <p>
+              Interface plus AWS S3 implementation. MinIO works locally through the same code path
+              by setting <code>S3_ENDPOINT</code>.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">transcription</span>
+            <h3><code>transcription/</code></h3>
+            <p>
+              <code>Transcriber</code> interface and <code>OpenAiTranscriber</code>. Calls Whisper
+              with Ktor <code>HttpClient</code>, not the official SDK.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">enrichment</span>
+            <h3><code>enrichment/</code></h3>
+            <p>
+              <code>Enricher</code> interface and <code>OpenAiEnricher</code>. Calls chat completions
+              with a JSON schema and returns category, tags, title, summary.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">pipeline</span>
+            <h3><code>pipeline/</code></h3>
+            <p>
+              Background coroutine worker. Moves thoughts through statuses, retries failures, and
+              recovers interrupted work on startup.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">user</span>
+            <h3><code>user/UserResolver.kt</code></h3>
+            <p>
+              Single future auth swap point. v1 always returns the seeded UUID. Routes should not
+              invent their own current-user logic.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">validation</span>
+            <h3><code>validation/Validators.kt</code></h3>
+            <p>
+              Small pure functions for MIME, duration, size, cursor, and limit parsing.
+              Easy to test, safe to reuse.
+            </p>
+          </div>
+
+          <div class="card">
+            <span class="tag">observability</span>
+            <h3><code>observability/Observability.kt</code></h3>
+            <p>
+              Request correlation IDs, structured request logs, and Sentry exception reporting.
+              Avoid logging transcript text, prompts, audio bytes, or secrets.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="data">
+        <h2>Database</h2>
+        <p>Flyway owns schema changes. Files run in version order:</p>
+        <table>
+          <thead>
+            <tr><th>Migration</th><th>Creates</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>V1__users.sql</code></td>
+              <td><code>users</code> table + seeded UUID</td>
+              <td>Prepares for future auth without redesigning the schema.</td>
+            </tr>
+            <tr>
+              <td><code>V2__thoughts.sql</code></td>
+              <td><code>thoughts</code> table</td>
+              <td>Stores audio metadata, transcript, status, retry state, timestamps.</td>
+            </tr>
+            <tr>
+              <td><code>V3__thought_enrichments.sql</code></td>
+              <td><code>thought_enrichments</code> table</td>
+              <td>Stores LLM output separately from the raw thought row.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          SQL lives in <code>ThoughtRepository.kt</code>. Queries always receive <code>userId</code>
+          where user-visible data is fetched. That keeps multi-user isolation ready for later.
+        </p>
+      </section>
+
+      <section id="pipeline">
+        <h2>Pipeline</h2>
+        <p>The pipeline is deliberately simple: one in-process coroutine loop, no external queue.</p>
+        <pre><code>pending
+  -> transcribing
+  -> enriching
+  -> done
+
+transcribing -> failed_transcription
+enriching    -> failed_enrichment</code></pre>
+        <p>
+          <code>RetryPolicy.kt</code> decides whether to retry or fail: 1s, 4s, 16s, then terminal
+          failure. <code>StartupRecovery.kt</code> resets interrupted transcription work so a restart
+          does not strand a row forever.
+        </p>
+        <div class="callout">
+          Important invariant: audio is stored before the row enters the pipeline. Enrichment only
+          exists after transcription succeeds.
+        </div>
+      </section>
+
+      <section id="testing">
+        <h2>Tests</h2>
+        <p>Tests are unit-only in v1. They focus on pure behavior and small boundaries:</p>
+        <ul>
+          <li><code>ConfigTest</code>: required env vars and defaults.</li>
+          <li><code>UserResolverTest</code>: seeded user id.</li>
+          <li><code>ValidatorsTest</code>: MIME, duration, and size validation.</li>
+          <li><code>StatusTest</code>: legal/illegal status transitions.</li>
+          <li><code>RetryPolicyTest</code>: retry schedule.</li>
+          <li><code>ListParsingTest</code>: cursor and limit parsing.</li>
+          <li><code>EnrichmentParsingTest</code>: structured enrichment JSON parsing.</li>
+        </ul>
+        <p>
+          Not tested yet: real Postgres SQL, S3/MinIO, Ktor route handlers, full pipeline orchestration.
+          Those need integration tests later.
+        </p>
+      </section>
+
+      <section id="ops">
+        <h2>Build and Ops Files</h2>
+        <table>
+          <thead>
+            <tr><th>File</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>build.gradle.kts</code></td>
+              <td>Kotlin/JVM plugins, dependencies, JDK 21 toolchain, test runner, Shadow fat JAR.</td>
+            </tr>
+            <tr>
+              <td><code>gradle/libs.versions.toml</code></td>
+              <td>Central version catalog. Change dependency versions here instead of scattering versions.</td>
+            </tr>
+            <tr>
+              <td><code>Dockerfile</code></td>
+              <td>Builds fat JAR in Gradle image, runs it on Temurin 21 JRE Alpine.</td>
+            </tr>
+            <tr>
+              <td><code>docker-compose.yml</code></td>
+              <td>Local Postgres and MinIO only. Kotlin app runs natively for fast iteration.</td>
+            </tr>
+            <tr>
+              <td><code>.env.example</code></td>
+              <td>Documents required runtime configuration for local/dev/prod environments.</td>
+            </tr>
+            <tr>
+              <td><code>.github/workflows/ci.yml</code></td>
+              <td>Builds/tests backend on push and PR.</td>
+            </tr>
+            <tr>
+              <td><code>.github/workflows/deploy-backend.yml</code></td>
+              <td>Manual Cloud Run deploy: build image, push to Artifact Registry, deploy service.</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code># backend
+./gradlew test build
+
+# frontend
+npm --prefix apps/web run build
+
+# local dependencies
+docker compose up postgres minio</code></pre>
+      </section>
+
+      <section id="frontend">
+        <h2>Frontend Touchpoint</h2>
+        <p>
+          <code>apps/web</code> is the Next.js PWA. It is not Kotlin, but it is the client that proves
+          the backend works. It fetches <code>/healthz</code>, reads <code>/config</code>, records audio
+          with <code>MediaRecorder</code>, uploads to <code>POST /thoughts</code>, polls thought status,
+          and plays audio through <code>GET /thoughts/:id/audio</code>.
+        </p>
+        <p>
+          The frontend talks to the backend through <code>NEXT_PUBLIC_API_BASE_URL</code>.
+          In local dev that defaults to <code>http://localhost:8080</code>.
+        </p>
+      </section>
+
+      <section id="learn">
+        <h2>What to Learn From This Repo</h2>
+        <ol>
+          <li><strong>Kotlin data classes:</strong> used for config, DTOs, domain models.</li>
+          <li><strong>Enums and state machines:</strong> <code>Status</code>, <code>Category</code>, <code>Status.next()</code>.</li>
+          <li><strong>Interfaces as boundaries:</strong> <code>BlobStore</code>, <code>Transcriber</code>, <code>Enricher</code>.</li>
+          <li><strong>Coroutines:</strong> background work in <code>ThoughtPipeline</code>.</li>
+          <li><strong>Ktor:</strong> routing, JSON serialization, CORS, status pages, Netty server.</li>
+          <li><strong>Raw SQL:</strong> kotliquery repository instead of ORM abstractions.</li>
+          <li><strong>JVM packaging:</strong> Shadow JAR, Docker image, JDK/JRE split.</li>
+          <li><strong>Operational shape:</strong> env config, migrations, structured logs, Sentry, CI.</li>
+        </ol>
+        <div class="callout">
+          Best reading order: <code>Application.kt</code>, <code>Config.kt</code>, <code>Models.kt</code>,
+          <code>Routes.kt</code>, <code>ThoughtRepository.kt</code>, then <code>ThoughtPipeline.kt</code>.
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+

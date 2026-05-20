@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thought Box — v1 Architecture</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c2030;
+    --ink: #e6e8ee;
+    --ink-dim: #9aa3b2;
+    --line: #2a3142;
+    --accent: #7aa2f7;
+    --accent-2: #bb9af7;
+    --green: #9ece6a;
+    --orange: #ff9e64;
+    --red: #f7768e;
+    --yellow: #e0af68;
+    --teal: #2ac3de;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 56px 32px 96px; }
+  header { margin-bottom: 48px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+  h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 8px; }
+  h1 .tag { font-size: 14px; color: var(--accent); font-family: var(--mono); font-weight: 500; margin-left: 12px; vertical-align: middle; }
+  header p { color: var(--ink-dim); margin: 0; font-size: 15px; max-width: 760px; }
+  h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; margin: 56px 0 16px; padding-left: 12px; border-left: 3px solid var(--accent); }
+  h3 { font-size: 16px; font-weight: 600; color: var(--ink); margin: 28px 0 12px; }
+  p { color: var(--ink-dim); font-size: 14.5px; }
+  .lead { color: var(--ink); margin-top: 4px; }
+  code, .mono { font-family: var(--mono); font-size: 13px; }
+  code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; color: var(--accent-2); }
+
+  .grid { display: grid; gap: 16px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .card h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .card .sub { font-size: 12px; color: var(--ink-dim); font-family: var(--mono); margin-bottom: 8px; }
+  .card p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-dim); }
+  .card.accent { border-color: rgba(122, 162, 247, 0.4); }
+  .card.green  { border-color: rgba(158, 206, 106, 0.35); }
+  .card.purple { border-color: rgba(187, 154, 247, 0.35); }
+  .card.orange { border-color: rgba(255, 158, 100, 0.35); }
+  .card.red    { border-color: rgba(247, 118, 142, 0.35); }
+  .card.teal   { border-color: rgba(42, 195, 222, 0.35); }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+  }
+  .pill.hitl { color: var(--orange); border-color: rgba(255,158,100,0.3); }
+  .pill.afk  { color: var(--green);  border-color: rgba(158,206,106,0.3); }
+
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 12px; color: var(--ink-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table th, table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table th { color: var(--ink-dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  table td.mono { font-family: var(--mono); color: var(--accent-2); }
+
+  .schema { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .schema-table { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .schema-table:last-child { border-bottom: none; }
+  .schema-title { font-family: var(--mono); font-size: 14px; color: var(--accent); margin-bottom: 8px; font-weight: 600; }
+  .schema-row { display: grid; grid-template-columns: 200px 1fr; gap: 12px; font-family: var(--mono); font-size: 12.5px; padding: 3px 0; color: var(--ink); }
+  .schema-row .type { color: var(--teal); }
+  .schema-row .note { color: var(--ink-dim); font-family: var(--sans); }
+  .pk { color: var(--yellow); }
+  .fk { color: var(--orange); }
+
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: "";
+    position: absolute; left: 11px; top: 8px; bottom: 8px;
+    width: 2px; background: var(--line);
+  }
+  .step { position: relative; margin-bottom: 18px; }
+  .step::before {
+    content: ""; position: absolute; left: -22px; top: 6px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--bg);
+  }
+  .step.afk::before { background: var(--green); }
+  .step .head { font-weight: 600; font-size: 14.5px; display: flex; align-items: center; gap: 10px; }
+  .step .body { color: var(--ink-dim); font-size: 13px; margin-top: 4px; }
+
+  footer { color: var(--ink-dim); font-size: 12px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Thought Box <span class="tag">v1 · architecture</span></h1>
+    <p>Dictation-first thought collector. Kotlin + Ktor backend on Google Cloud Run, Next.js PWA on Vercel, Neon Postgres, AWS S3 for audio, OpenAI Whisper + <code>gpt-4o-mini</code> for STT and enrichment. Single-user v1, schema is multi-user-ready.</p>
+  </header>
+
+  <!-- ============================================================ -->
+  <h2>1 · System topology</h2>
+  <p class="lead">One request from "tap record" to "stored, transcribed, enriched thought" spans four external services and one async pipeline. The PWA only talks to the backend; everything else is server-to-server.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 540" role="img" aria-label="System topology">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7aa2f7"/>
+        </marker>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#bb9af7"/>
+        </marker>
+        <style>
+          .nbox { fill: #1c2030; stroke: #2a3142; stroke-width: 1.5; rx: 10; ry: 10; }
+          .nlabel { fill: #e6e8ee; font: 600 14px var(--sans, sans-serif); }
+          .nsub { fill: #9aa3b2; font: 500 11px ui-monospace, monospace; }
+          .arrow { stroke: #7aa2f7; stroke-width: 2; fill: none; marker-end: url(#arr); }
+          .arrow2 { stroke: #bb9af7; stroke-width: 2; fill: none; stroke-dasharray: 5 4; marker-end: url(#arr2); }
+          .edge-label { fill: #9aa3b2; font: 500 11px ui-monospace, monospace; }
+          .group { fill: none; stroke: #2a3142; stroke-dasharray: 4 4; rx: 14; ry: 14; }
+          .glabel { fill: #9aa3b2; font: 500 11px ui-monospace, monospace; }
+        </style>
+      </defs>
+
+      <!-- Vercel group -->
+      <rect class="group" x="20" y="40" width="240" height="180"/>
+      <text class="glabel" x="32" y="60">vercel · edge</text>
+      <rect class="nbox" x="50" y="90" width="180" height="100" fill="#1f2740"/>
+      <text class="nlabel" x="140" y="125" text-anchor="middle">PWA</text>
+      <text class="nsub"   x="140" y="145" text-anchor="middle">next.js · app router</text>
+      <text class="nsub"   x="140" y="165" text-anchor="middle">MediaRecorder + polling</text>
+
+      <!-- Cloud Run group -->
+      <rect class="group" x="350" y="40" width="380" height="460"/>
+      <text class="glabel" x="362" y="60">google cloud run · *.run.app https</text>
+
+      <rect class="nbox" x="395" y="90"  width="290" height="80"/>
+      <text class="nlabel" x="540" y="118" text-anchor="middle">Ktor HTTP routes</text>
+      <text class="nsub"   x="540" y="140" text-anchor="middle">POST /thoughts · GET /thoughts · /healthz</text>
+
+      <rect class="nbox" x="395" y="200" width="290" height="80"/>
+      <text class="nlabel" x="540" y="228" text-anchor="middle">ThoughtPipeline</text>
+      <text class="nsub"   x="540" y="250" text-anchor="middle">coroutine worker · retry · recovery sweep</text>
+
+      <rect class="nbox" x="395" y="310" width="135" height="80"/>
+      <text class="nlabel" x="462" y="338" text-anchor="middle">Transcriber</text>
+      <text class="nsub"   x="462" y="358" text-anchor="middle">interface</text>
+
+      <rect class="nbox" x="550" y="310" width="135" height="80"/>
+      <text class="nlabel" x="617" y="338" text-anchor="middle">Enricher</text>
+      <text class="nsub"   x="617" y="358" text-anchor="middle">interface</text>
+
+      <rect class="nbox" x="395" y="420" width="290" height="60"/>
+      <text class="nlabel" x="540" y="447" text-anchor="middle">BlobStore · ThoughtRepository</text>
+      <text class="nsub"   x="540" y="465" text-anchor="middle">S3 SDK · kotliquery</text>
+
+      <!-- Externals -->
+      <rect class="nbox" x="810" y="60"  width="220" height="90"/>
+      <text class="nlabel" x="920" y="92"  text-anchor="middle">OpenAI</text>
+      <text class="nsub"   x="920" y="114" text-anchor="middle">whisper · gpt-4o-mini</text>
+      <text class="nsub"   x="920" y="132" text-anchor="middle">json-schema · idempotency-key</text>
+
+      <rect class="nbox" x="810" y="200" width="220" height="90"/>
+      <text class="nlabel" x="920" y="232" text-anchor="middle">AWS S3</text>
+      <text class="nsub"   x="920" y="254" text-anchor="middle">thoughts-prod bucket</text>
+      <text class="nsub"   x="920" y="272" text-anchor="middle">iam user · scoped policy</text>
+
+      <rect class="nbox" x="810" y="340" width="220" height="90"/>
+      <text class="nlabel" x="920" y="372" text-anchor="middle">Neon Postgres</text>
+      <text class="nsub"   x="920" y="394" text-anchor="middle">serverless · scale-to-zero</text>
+      <text class="nsub"   x="920" y="412" text-anchor="middle">flyway-migrated</text>
+
+      <!-- Edges -->
+      <path class="arrow" d="M 230 130 Q 310 130 395 130"/>
+      <text class="edge-label" x="245" y="120">https · multipart</text>
+
+      <path class="arrow" d="M 685 250 Q 760 200 810 110"/>
+      <text class="edge-label" x="710" y="200">STT + LLM</text>
+
+      <path class="arrow" d="M 685 450 Q 760 380 810 260"/>
+      <text class="edge-label" x="715" y="340">put / get audio</text>
+
+      <path class="arrow" d="M 685 450 Q 760 430 810 400"/>
+      <text class="edge-label" x="720" y="425">SQL · jdbc</text>
+
+      <path class="arrow2" d="M 540 170 L 540 200"/>
+      <path class="arrow2" d="M 462 280 L 462 310"/>
+      <path class="arrow2" d="M 617 280 L 617 310"/>
+      <path class="arrow2" d="M 540 390 L 540 420"/>
+
+      <!-- Sentry sideband -->
+      <rect class="nbox" x="50" y="320" width="180" height="80"/>
+      <text class="nlabel" x="140" y="350" text-anchor="middle">Sentry</text>
+      <text class="nsub"   x="140" y="372" text-anchor="middle">exception capture</text>
+      <path class="arrow2" d="M 395 235 Q 280 280 230 340"/>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#7aa2f7"></span>request flow</span>
+      <span><span class="swatch" style="background:#bb9af7"></span>in-process composition</span>
+      <span><span class="swatch" style="background:#2a3142"></span>deployment boundary</span>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>2 · The async pipeline</h2>
+  <p class="lead">Upload is fast; transcription and enrichment run on an in-process coroutine worker. Status is one column on <code>thoughts</code>. The client polls a single endpoint until the status is terminal.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 280" role="img" aria-label="Pipeline state machine">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ece6a"/>
+        </marker>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f7768e"/>
+        </marker>
+        <style>
+          .state { fill: #1c2030; stroke: #2a3142; stroke-width: 1.5; rx: 28; ry: 28; }
+          .state-terminal { fill: #1f2a1f; stroke: rgba(158,206,106,0.4); }
+          .state-fail { fill: #2a1c20; stroke: rgba(247,118,142,0.4); }
+          .stext { fill: #e6e8ee; font: 600 13px ui-monospace, monospace; text-anchor: middle; }
+          .stext-fail { fill: #f7768e; }
+          .stext-done { fill: #9ece6a; }
+          .edge3 { stroke: #9ece6a; stroke-width: 2; fill: none; marker-end: url(#arr3); }
+          .edge4 { stroke: #f7768e; stroke-width: 1.6; fill: none; marker-end: url(#arr4); stroke-dasharray: 4 3; }
+          .elabel { fill: #9aa3b2; font: 500 11px ui-monospace, monospace; text-anchor: middle; }
+        </style>
+      </defs>
+
+      <rect class="state" x="30"   y="100" width="150" height="56"/>
+      <text class="stext" x="105"  y="132">pending</text>
+
+      <rect class="state" x="240"  y="100" width="170" height="56"/>
+      <text class="stext" x="325"  y="132">transcribing</text>
+
+      <rect class="state" x="470"  y="100" width="150" height="56"/>
+      <text class="stext" x="545"  y="132">enriching</text>
+
+      <rect class="state state-terminal" x="680" y="100" width="140" height="56"/>
+      <text class="stext stext-done" x="750"  y="132">done</text>
+
+      <rect class="state state-fail" x="240" y="200" width="170" height="56"/>
+      <text class="stext stext-fail" x="325"  y="232">failed_transcription</text>
+
+      <rect class="state state-fail" x="470" y="200" width="170" height="56"/>
+      <text class="stext stext-fail" x="555"  y="232">failed_enrichment</text>
+
+      <path class="edge3" d="M 180 128 L 240 128"/>
+      <text class="elabel" x="210" y="118">worker picks</text>
+
+      <path class="edge3" d="M 410 128 L 470 128"/>
+      <text class="elabel" x="440" y="118">whisper ok</text>
+
+      <path class="edge3" d="M 620 128 L 680 128"/>
+      <text class="elabel" x="650" y="118">llm ok</text>
+
+      <path class="edge4" d="M 325 156 L 325 200"/>
+      <text class="elabel" x="385" y="180">3 retries exhausted</text>
+
+      <path class="edge4" d="M 555 156 L 555 200"/>
+      <text class="elabel" x="615" y="180">3 retries exhausted</text>
+
+      <!-- Recovery loop -->
+      <path class="edge3" d="M 325 100 Q 325 40 180 40 Q 105 40 105 100" stroke-dasharray="6 4"/>
+      <text class="elabel" x="240" y="32">startup recovery sweep</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#9ece6a"></span>success / progress</span>
+      <span><span class="swatch" style="background:#f7768e"></span>failure / retries exhausted</span>
+      <span><span class="swatch" style="background:#9ece6a; opacity:0.5"></span>recovery on boot</span>
+    </div>
+  </div>
+
+  <p style="margin-top:14px">Retry policy: 3 attempts, exponential backoff <code>1s · 4s · 16s</code>. <code>attempts</code>, <code>last_error</code>, <code>last_attempt_at</code> live on the row — no separate retry table. Idempotency-Key is set on chat completions (derived from <code>thought_id + prompt_version</code>); Whisper does not support it, so a retry could double-bill — accepted at side-project cost.</p>
+
+  <!-- ============================================================ -->
+  <h2>3 · Module map</h2>
+  <p class="lead">Deep modules behind small interfaces. Every external service hides behind one Kotlin interface with exactly one v1 implementation. Single swap point per provider.</p>
+
+  <div class="grid cols-3">
+    <div class="card accent">
+      <h4>Config</h4>
+      <div class="sub">env → typed object</div>
+      <p>Single source of truth, validated at boot. No other module reads env directly.</p>
+    </div>
+    <div class="card purple">
+      <h4>Transcriber</h4>
+      <div class="sub">interface · OpenAiTranscriber</div>
+      <p>Hides Whisper HTTP, response parsing, error categorization. Hand-rolled via Ktor HttpClient — no official SDK.</p>
+    </div>
+    <div class="card purple">
+      <h4>Enricher</h4>
+      <div class="sub">interface · OpenAiEnricher</div>
+      <p>JSON-schema chat completions. Returns category + tags + title + summary. Idempotency-Key per (thought, prompt_version).</p>
+    </div>
+    <div class="card teal">
+      <h4>BlobStore</h4>
+      <div class="sub">interface · S3BlobStore</div>
+      <p>put / get / exists over byte streams. <code>S3_ENDPOINT</code> override switches MinIO ↔ S3 with zero <code>if isDev</code>.</p>
+    </div>
+    <div class="card teal">
+      <h4>ThoughtRepository</h4>
+      <div class="sub">kotliquery · raw SQL</div>
+      <p>Inserts, status transitions, cursor pagination, sweep queries. Domain types out, SQL strings in.</p>
+    </div>
+    <div class="card accent">
+      <h4>UserResolver</h4>
+      <div class="sub">single swap point</div>
+      <p>v1: hardcoded seeded UUID. Future: JWT extractor. Every query routes through this for <code>current_user_id</code>.</p>
+    </div>
+    <div class="card green">
+      <h4>ThoughtPipeline</h4>
+      <div class="sub">coroutine worker</div>
+      <p>The heart. Reads <code>pending</code>, drives the state machine, owns retry + backoff, updates <code>attempts</code> and <code>last_error</code>.</p>
+    </div>
+    <div class="card green">
+      <h4>StartupRecovery</h4>
+      <div class="sub">boot sweep</div>
+      <p>Reclaims rows stuck in <code>transcribing</code> / <code>enriching</code> after a crash or deploy.</p>
+    </div>
+    <div class="card orange">
+      <h4>HTTP routes</h4>
+      <div class="sub">thin handlers</div>
+      <p>Ktor route handlers parse, dispatch, render. Zero business logic — that lives in pipeline + repository.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>4 · Data model</h2>
+  <p class="lead">Three tables. UUID primary keys. Status as text + CHECK (not Postgres enum) so future values don't need <code>ALTER TYPE</code>. Tags as <code>text[]</code> until tag-level metadata earns a normalized schema.</p>
+
+  <div class="schema">
+    <div class="schema-table">
+      <div class="schema-title">users</div>
+      <div class="schema-row"><span class="pk">id</span><span><span class="type">uuid</span> <span class="note">primary key</span></span></div>
+      <div class="schema-row"><span>created_at</span><span><span class="type">timestamptz</span> <span class="note">default now()</span></span></div>
+      <div class="schema-row"><span class="note" style="grid-column: 1 / -1">intentionally minimal — email / auth columns deferred until auth lands</span></div>
+    </div>
+
+    <div class="schema-table">
+      <div class="schema-title">thoughts</div>
+      <div class="schema-row"><span class="pk">id</span><span><span class="type">uuid</span> <span class="note">primary key</span></span></div>
+      <div class="schema-row"><span class="fk">user_id</span><span><span class="type">uuid</span> <span class="note">→ users(id) not null</span></span></div>
+      <div class="schema-row"><span>audio_s3_key</span><span><span class="type">text</span> <span class="note">e.g. thoughts/&lt;uuid&gt;.webm</span></span></div>
+      <div class="schema-row"><span>mime_type</span><span><span class="type">text</span> <span class="note">e.g. audio/webm;codecs=opus</span></span></div>
+      <div class="schema-row"><span>duration_ms</span><span><span class="type">integer</span> <span class="note">nullable until client reports</span></span></div>
+      <div class="schema-row"><span>size_bytes</span><span><span class="type">bigint</span></span></div>
+      <div class="schema-row"><span>transcript</span><span><span class="type">text</span> <span class="note">nullable</span></span></div>
+      <div class="schema-row"><span>status</span><span><span class="type">text</span> <span class="note">CHECK · pending|transcribing|enriching|done|failed_*</span></span></div>
+      <div class="schema-row"><span>attempts</span><span><span class="type">integer</span> <span class="note">default 0</span></span></div>
+      <div class="schema-row"><span>last_error</span><span><span class="type">text</span> <span class="note">nullable</span></span></div>
+      <div class="schema-row"><span>last_attempt_at</span><span><span class="type">timestamptz</span> <span class="note">nullable</span></span></div>
+      <div class="schema-row"><span>transcribed_at</span><span><span class="type">timestamptz</span> <span class="note">nullable</span></span></div>
+      <div class="schema-row"><span>created_at, updated_at</span><span><span class="type">timestamptz</span></span></div>
+    </div>
+
+    <div class="schema-table">
+      <div class="schema-title">thought_enrichments</div>
+      <div class="schema-row"><span class="pk fk">thought_id</span><span><span class="type">uuid</span> <span class="note">PK · → thoughts(id) ON DELETE CASCADE</span></span></div>
+      <div class="schema-row"><span>category</span><span><span class="type">text</span> <span class="note">CHECK · idea|todo|feeling|question|observation|reminder</span></span></div>
+      <div class="schema-row"><span>tags</span><span><span class="type">text[]</span> <span class="note">default '{}'</span></span></div>
+      <div class="schema-row"><span>title</span><span><span class="type">text</span></span></div>
+      <div class="schema-row"><span>summary</span><span><span class="type">text</span></span></div>
+      <div class="schema-row"><span>model</span><span><span class="type">text</span> <span class="note">e.g. gpt-4o-mini</span></span></div>
+      <div class="schema-row"><span>prompt_version</span><span><span class="type">text</span> <span class="note">enables prompt A/B + selective re-run</span></span></div>
+      <div class="schema-row"><span>created_at</span><span><span class="type">timestamptz</span></span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>5 · HTTP surface</h2>
+  <p class="lead">Six endpoints. JSON. Cursor pagination. No GraphQL, no auth in v1.</p>
+
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">POST</td>   <td class="mono">/thoughts</td>             <td>Multipart upload → stream to S3 → insert <code>pending</code> row → return <code>{ id, status, created_at }</code></td></tr>
+      <tr><td class="mono">GET</td>    <td class="mono">/thoughts/:id</td>         <td>Polling endpoint. Returns status, transcript (if any), enrichment (if any), audio metadata</td></tr>
+      <tr><td class="mono">GET</td>    <td class="mono">/thoughts</td>             <td>Cursor-paginated list. Optional <code>category</code> and <code>tag</code> filters</td></tr>
+      <tr><td class="mono">GET</td>    <td class="mono">/thoughts/:id/audio</td>   <td>Streams original audio bytes with stored Content-Type</td></tr>
+      <tr><td class="mono">GET</td>    <td class="mono">/config</td>               <td>Returns <code>{ max_duration_ms, min_duration_ms, max_size_bytes }</code> so PWA never hardcodes limits</td></tr>
+      <tr><td class="mono">GET</td>    <td class="mono">/healthz</td>              <td>Liveness probe + PWA keepalive ping on mount (warms Cloud Run + Neon)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ============================================================ -->
+  <h2>6 · Environment isolation</h2>
+  <p class="lead">Dev and prod share no resources. Same code path, different names. Misconfiguration crashes loudly instead of writing to the wrong store.</p>
+
+  <div class="grid cols-2">
+    <div class="card teal">
+      <h4>dev (local laptop)</h4>
+      <div class="sub">docker compose · localhost</div>
+      <p>Postgres in Compose, MinIO in Compose, dev OpenAI key, dev IAM keys scoped to <code>thoughts-dev</code>. <code>S3_ENDPOINT=http://localhost:9000</code>.</p>
+    </div>
+    <div class="card orange">
+      <h4>prod (Cloud Run)</h4>
+      <div class="sub">*.run.app · managed</div>
+      <p>Neon Postgres, AWS S3 (<code>thoughts-prod</code>), prod OpenAI key, prod IAM keys. <code>S3_ENDPOINT</code> unset → defaults to AWS.</p>
+    </div>
+  </div>
+
+  <h3>Guardrails</h3>
+  <div class="grid cols-3">
+    <div class="card">
+      <h4>different resource names</h4>
+      <p>Distinct bucket and database names per env. Wrong creds → bucket doesn't exist → app crashes loudly.</p>
+    </div>
+    <div class="card">
+      <h4>no prod creds on laptop</h4>
+      <p>Prod IAM keys live only in GH Secrets + Cloud Run env. Laptop only has dev-scoped IAM.</p>
+    </div>
+    <div class="card">
+      <h4>startup banner</h4>
+      <p>App logs the active env + Postgres host + S3 endpoint at boot. Cheap, prevents "which DB am I on?" confusion.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>7 · CI/CD flow</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 200" role="img" aria-label="CI/CD pipeline">
+      <defs>
+        <marker id="arrcd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7aa2f7"/>
+        </marker>
+        <style>
+          .stage { fill: #1c2030; stroke: #2a3142; stroke-width: 1.5; rx: 10; ry: 10; }
+          .stext2 { fill: #e6e8ee; font: 600 13px var(--sans, sans-serif); text-anchor: middle; }
+          .ssub { fill: #9aa3b2; font: 500 11px ui-monospace, monospace; text-anchor: middle; }
+          .e { stroke: #7aa2f7; stroke-width: 2; fill: none; marker-end: url(#arrcd); }
+        </style>
+      </defs>
+
+      <rect class="stage" x="20"   y="40" width="150" height="80"/>
+      <text class="stext2" x="95"  y="72">git push</text>
+      <text class="ssub"   x="95"  y="94">main or PR</text>
+
+      <rect class="stage" x="210"  y="40" width="180" height="80"/>
+      <text class="stext2" x="300" y="72">GH Actions · CI</text>
+      <text class="ssub"   x="300" y="94">gradle test + shadowJar</text>
+
+      <rect class="stage" x="430"  y="40" width="200" height="80"/>
+      <text class="stext2" x="530" y="72">workflow_dispatch</text>
+      <text class="ssub"   x="530" y="94">manual click</text>
+
+      <rect class="stage" x="670"  y="40" width="180" height="80"/>
+      <text class="stext2" x="760" y="72">Artifact Registry</text>
+      <text class="ssub"   x="760" y="94">docker push</text>
+
+      <rect class="stage" x="890"  y="40" width="170" height="80"/>
+      <text class="stext2" x="975" y="72">Cloud Run</text>
+      <text class="ssub"   x="975" y="94">gcloud run deploy</text>
+
+      <path class="e" d="M 170 80 L 210 80"/>
+      <path class="e" d="M 390 80 L 430 80"/>
+      <path class="e" d="M 630 80 L 670 80"/>
+      <path class="e" d="M 850 80 L 890 80"/>
+
+      <rect class="stage" x="430" y="150" width="200" height="40"/>
+      <text class="stext2" x="530" y="176">Vercel · auto-deploy frontend on push</text>
+    </svg>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>8 · Delivery roadmap</h2>
+  <p class="lead">Seven vertical-slice tracer bullets. Each is end-to-end demoable. <span class="pill hitl">HITL</span> needs user setup (credentials, accounts); <span class="pill afk">AFK</span> runs unattended.</p>
+
+  <div class="timeline">
+    <div class="step">
+      <div class="head">01 · Skeleton deploys <span class="pill hitl">HITL</span></div>
+      <div class="body">Ktor <code>/healthz</code> + Dockerfile + Cloud Run + Vercel Next.js + CI green + manual-deploy workflow. PWA pings <code>/healthz</code> on mount.</div>
+    </div>
+    <div class="step">
+      <div class="head">02 · DB + config + seeded user <span class="pill hitl">HITL</span></div>
+      <div class="body">Neon, Flyway, <code>users</code> table, <code>Config</code>, <code>UserResolver</code>, env banner. <code>GET /me</code> returns seeded UUID.</div>
+    </div>
+    <div class="step">
+      <div class="head">03 · Audio upload + playback <span class="pill hitl">HITL</span></div>
+      <div class="body">S3 + MinIO via <code>BlobStore</code>. <code>thoughts</code> table. PWA records, uploads, replays. No AI yet.</div>
+    </div>
+    <div class="step">
+      <div class="head">04 · Transcription pipeline <span class="pill hitl">HITL</span></div>
+      <div class="body"><code>Transcriber</code> + <code>OpenAiTranscriber</code>. Pipeline worker, retry policy, recovery sweep. PWA polls and renders transcript.</div>
+    </div>
+    <div class="step afk">
+      <div class="head">05 · Enrichment + detail view <span class="pill afk">AFK</span></div>
+      <div class="body"><code>Enricher</code> + JSON-schema chat completions. <code>thought_enrichments</code> table. Detail view renders title + summary + category + tags.</div>
+    </div>
+    <div class="step afk">
+      <div class="head">06 · List + filters <span class="pill afk">AFK</span></div>
+      <div class="body">Cursor-paginated <code>GET /thoughts</code>, <code>category</code> + <code>tag</code> filters. PWA list view + filter chips.</div>
+    </div>
+    <div class="step afk">
+      <div class="head">07 · Observability <span class="pill afk">AFK</span></div>
+      <div class="body">Logback JSON to stdout, structured events at request + transition + external-call boundaries, Sentry on uncaught exceptions.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>9 · Cost ceiling (free-tier accounting)</h2>
+  <div class="grid cols-4">
+    <div class="card green">
+      <h4>Cloud Run</h4>
+      <div class="sub">2M req · 360k GB-s / mo</div>
+      <p>Free forever at this scale. Cold start ~3–5s after idle, mitigated by PWA keepalive.</p>
+    </div>
+    <div class="card green">
+      <h4>Neon</h4>
+      <div class="sub">0.5 GB · 190 compute-hr / mo</div>
+      <p>Free forever. Scale-to-zero compounds cold start; pooled-mode wake ~1s.</p>
+    </div>
+    <div class="card green">
+      <h4>Vercel</h4>
+      <div class="sub">Hobby tier</div>
+      <p>Frontend static + serverless. Free, no budget worries at side-project volume.</p>
+    </div>
+    <div class="card orange">
+      <h4>AWS S3</h4>
+      <div class="sub">5 GB free for 12 mo</div>
+      <p>Audio storage is &lt; 1 GB in realistic use. After year 1, ~$0.02–0.10/mo. Effectively free.</p>
+    </div>
+    <div class="card red">
+      <h4>OpenAI</h4>
+      <div class="sub">pay per use</div>
+      <p>Whisper $0.006/min · <code>gpt-4o-mini</code> negligible. 180 one-min thoughts/mo ≈ $1.10. Capped by per-key usage limits.</p>
+    </div>
+    <div class="card green">
+      <h4>Sentry</h4>
+      <div class="sub">5k events / mo</div>
+      <p>Free indefinitely at this scale.</p>
+    </div>
+    <div class="card green">
+      <h4>GitHub Actions</h4>
+      <div class="sub">2000 min / mo private</div>
+      <p>CI + deploy combined run well under the cap.</p>
+    </div>
+    <div class="card teal">
+      <h4>Domain</h4>
+      <div class="sub">deferred</div>
+      <p>v1 uses Cloud Run's <code>*.run.app</code> + Vercel's <code>*.vercel.app</code>. No domain purchase.</p>
+    </div>
+  </div>
+
+  <footer>
+    Generated from the design interview captured in <code>docs/prd/v1-thought-box.md</code> and <code>docs/issues/01–07</code>. Stack and decisions locked; this document visualizes the agreed plan.
+  </footer>
+
+</div>
+</body>
+</html>

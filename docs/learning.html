@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>From Node.js to Kotlin — A Learner's Guide</title>
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface-2: #fafbfd;
+    --text: #1b1f2a;
+    --muted: #5b6478;
+    --border: #e6e8ef;
+    --accent: #4f46e5;
+    --accent-soft: #eef0ff;
+    --kotlin: #7f52ff;
+    --node: #3c873a;
+    --code-bg: #1e1f29;
+    --inline-code-bg: #eef0f5;
+    --inline-code-fg: #3a3f50;
+    --tip: #2563eb;
+    --tip-bg: #f0f6ff;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #059669;
+    --ok-bg: #ecfdf5;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.06);
+    --radius: 12px;
+    --diagram-rect: #fff;
+    --diagram-stroke: #5b6478;
+  }
+  html[data-theme="dark"] {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-2: #1c222b;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --border: #2a313c;
+    --accent: #818cf8;
+    --accent-soft: #1e2243;
+    --kotlin: #b794ff;
+    --node: #6cc36a;
+    --code-bg: #0b0e14;
+    --inline-code-bg: #22293340;
+    --inline-code-fg: #c9d1d9;
+    --tip: #60a5fa;
+    --tip-bg: #11203a;
+    --warn: #fbbf24;
+    --warn-bg: #2a210a;
+    --ok: #34d399;
+    --ok-bg: #0d2820;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.4);
+    --diagram-rect: #1c222b;
+    --diagram-stroke: #8b949e;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    max-width: 1240px;
+    margin: 0 auto;
+    gap: 48px;
+    padding: 0 32px;
+  }
+  aside {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 40px 0;
+    border-right: 1px solid var(--border);
+  }
+  aside .brand {
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  aside .brand .arrow { color: var(--accent); }
+  aside .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 24px;
+  }
+  aside nav ol { list-style: none; padding: 0; margin: 0; counter-reset: section; }
+  aside nav li { margin: 2px 0; }
+  aside nav a {
+    display: block;
+    padding: 6px 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    border-left: 2px solid transparent;
+    transition: all .15s ease;
+  }
+  aside nav a:hover { background: var(--accent-soft); color: var(--accent); text-decoration: none; }
+  aside nav a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+  aside nav .sub { padding-left: 14px; font-size: 13px; }
+
+  main { padding: 64px 0 120px; min-width: 0; }
+  .hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7f52ff 100%);
+    color: white;
+    padding: 48px 40px;
+    border-radius: 20px;
+    margin-bottom: 56px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    right: -80px;
+    top: -80px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+  }
+  .hero h1 { font-size: 38px; font-weight: 800; margin: 12px 0 12px; letter-spacing: -0.02em; line-height: 1.15; }
+  .hero p { font-size: 17px; margin: 0; opacity: .92; max-width: 640px; }
+  .hero .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: .85; }
+
+  section { margin-bottom: 64px; }
+  h2 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    scroll-margin-top: 24px;
+  }
+  h2 .num {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 8px;
+    vertical-align: middle;
+    margin-right: 12px;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 32px 0 8px;
+    scroll-margin-top: 24px;
+  }
+  .section-lead {
+    color: var(--muted);
+    font-size: 16px;
+    margin: 0 0 28px;
+    max-width: 720px;
+  }
+  p { margin: 12px 0; }
+
+  /* Comparison grid */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .compare > div {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .compare .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .compare .head .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .compare .head .dot.node { background: var(--node); }
+  .compare .head .dot.kotlin { background: var(--kotlin); }
+  .compare pre {
+    margin: 0;
+    border-radius: 0;
+    font-size: 13px;
+  }
+  pre[class*="language-"] {
+    background: var(--code-bg) !important;
+    border-radius: var(--radius);
+    padding: 18px 20px !important;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  code[class*="language-"], pre[class*="language-"] {
+    font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  }
+  :not(pre) > code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88em;
+    background: var(--inline-code-bg);
+    color: var(--inline-code-fg);
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+  th, td { padding: 14px 18px; text-align: left; vertical-align: top; }
+  thead th {
+    background: var(--surface-2);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr + tr td { border-top: 1px solid var(--border); }
+  td.feature { font-weight: 600; width: 28%; }
+  td.node-cell { border-left: 3px solid var(--node); }
+  td.kotlin-cell { border-left: 3px solid var(--kotlin); }
+
+  /* Callouts */
+  .callout {
+    border-left: 3px solid var(--tip);
+    background: var(--tip-bg);
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+  .callout.tip { border-color: var(--ok); background: var(--ok-bg); }
+  .callout.warn { border-color: var(--warn); background: var(--warn-bg); }
+  .callout strong { display: block; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+  .callout.tip strong { color: var(--ok); }
+  .callout.warn strong { color: var(--warn); }
+  .callout:not(.tip):not(.warn) strong { color: var(--tip); }
+
+  /* Diagrams */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin: 24px 0;
+    box-shadow: var(--shadow);
+  }
+  .diagram .caption {
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+  ul.clean { padding-left: 20px; }
+  ul.clean li { margin: 6px 0; }
+
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 50;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: transform .15s ease, background .2s ease;
+  }
+  .theme-toggle:hover { transform: translateY(-1px); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  html[data-theme="dark"] .theme-toggle .sun { display: block; }
+  html[data-theme="dark"] .theme-toggle .moon { display: none; }
+  .theme-toggle .sun { display: none; }
+  .theme-toggle .moon { display: block; }
+
+  /* SVG diagrams adapt to theme */
+  .diagram svg text { fill: var(--text); }
+  .diagram svg text.muted { fill: var(--muted); }
+  .diagram svg .stroke { stroke: var(--diagram-stroke); }
+  .diagram svg .rect-neutral { fill: var(--diagram-rect); stroke: var(--diagram-stroke); }
+  html[data-theme="dark"] .diagram svg .node-fill { fill: #1a2e1a; }
+  html[data-theme="dark"] .diagram svg .kotlin-fill { fill: #2a1f44; }
+  html[data-theme="dark"] .diagram svg .accent-fill { fill: #1e2243; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; padding: 0 20px; gap: 0; }
+    aside { display: none; }
+    .compare { grid-template-columns: 1fr; }
+    .hero { padding: 32px 24px; }
+    .hero h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+  <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+</button>
+<div class="layout">
+  <aside>
+    <div class="brand">Node.js <span class="arrow">→</span> Kotlin</div>
+    <span class="tag">Learner's guide</span>
+    <nav>
+      <ol>
+        <li><a href="#runtime" class="active">1. Runtime &amp; Execution</a></li>
+        <li class="sub"><a href="#runtime-strategy">Execution strategy</a></li>
+        <li class="sub"><a href="#runtime-strengths">Performance strengths</a></li>
+        <li><a href="#syntax">2. Syntax Essentials</a></li>
+        <li class="sub"><a href="#syntax-basics">Basic syntax tour</a></li>
+        <li class="sub"><a href="#extension">Extension functions</a></li>
+        <li class="sub"><a href="#scope-fns">Scope functions</a></li>
+        <li><a href="#concurrency">3. Concurrency Models</a></li>
+        <li class="sub"><a href="#event-loop">Event loop</a></li>
+        <li class="sub"><a href="#coroutines">Coroutines</a></li>
+        <li class="sub"><a href="#structured">Structured concurrency</a></li>
+        <li><a href="#types">4. Type Systems &amp; Safety</a></li>
+        <li class="sub"><a href="#null-safety">Null safety</a></li>
+        <li class="sub"><a href="#sealed">Sealed classes</a></li>
+        <li class="sub"><a href="#immutability">Immutability</a></li>
+        <li><a href="#ecosystem">5. Ecosystem &amp; Tools</a></li>
+        <li class="sub"><a href="#build">Build systems</a></li>
+        <li class="sub"><a href="#frameworks">Frameworks</a></li>
+        <li class="sub"><a href="#ide">IDE support</a></li>
+        <li><a href="#testing">6. Testing Basics</a></li>
+        <li class="sub"><a href="#test-frameworks">JUnit &amp; Kotest</a></li>
+        <li class="sub"><a href="#test-coroutines">Testing coroutines</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">A learner's guide</div>
+      <h1>From Node.js to Kotlin</h1>
+      <p>A guided tour through the runtime, concurrency model, type system, and ecosystem differences — written for a JavaScript/TypeScript developer about to pick up Kotlin.</p>
+    </header>
+
+    <section id="runtime">
+      <h2><span class="num">01</span>Runtime &amp; Execution Models</h2>
+      <p class="section-lead">Before any syntax, the biggest mental shift is <em>where</em> your code runs and how it gets there.</p>
+
+      <table>
+        <thead><tr><th>Aspect</th><th>Node.js</th><th>Kotlin (JVM)</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">Engine</td><td class="node-cell">V8 (Chrome's JS engine)</td><td class="kotlin-cell">JVM (HotSpot, GraalVM, ...)</td></tr>
+          <tr><td class="feature">Threading model</td><td class="node-cell">Single-threaded event loop</td><td class="kotlin-cell">Multi-threaded by design</td></tr>
+          <tr><td class="feature">Compilation</td><td class="node-cell">Interpreted + JIT at runtime</td><td class="kotlin-cell">Compiled to JVM bytecode ahead of time</td></tr>
+          <tr><td class="feature">Sweet spot</td><td class="node-cell">I/O-bound workloads</td><td class="kotlin-cell">CPU-bound workloads</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="runtime-strategy">Execution strategy</h3>
+      <p>Node.js parses and interprets JavaScript at runtime, with V8's JIT promoting hot code paths to optimized machine code. Kotlin instead compiles to <strong>Java bytecode</strong> ahead of time; the JVM then loads that bytecode and JIT-compiles it further as it runs.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Compilation pipelines">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-family="Inter, sans-serif" font-size="13" color="var(--diagram-stroke)">
+            <text x="20" y="30" font-weight="600" fill="var(--node)">Node.js</text>
+            <rect class="node-fill" x="20" y="50" width="120" height="48" rx="8" fill="#eaf5ea" stroke="var(--node)"/>
+            <text x="80" y="79" text-anchor="middle">app.js</text>
+            <line x1="145" y1="74" x2="195" y2="74" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="rect-neutral" x="200" y="50" width="120" height="48" rx="8"/>
+            <text x="260" y="79" text-anchor="middle">V8 interpret</text>
+            <line x1="325" y1="74" x2="375" y2="74" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="rect-neutral" x="380" y="50" width="120" height="48" rx="8"/>
+            <text x="440" y="79" text-anchor="middle">JIT (hot paths)</text>
+            <line x1="505" y1="74" x2="555" y2="74" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="accent-fill" x="560" y="50" width="140" height="48" rx="8" fill="#eef0ff" stroke="var(--accent)"/>
+            <text x="630" y="79" text-anchor="middle">CPU execution</text>
+
+            <text x="20" y="140" font-weight="600" fill="var(--kotlin)">Kotlin (JVM)</text>
+            <rect class="kotlin-fill" x="20" y="160" width="120" height="48" rx="8" fill="#f3eeff" stroke="var(--kotlin)"/>
+            <text x="80" y="189" text-anchor="middle">App.kt</text>
+            <line x1="145" y1="184" x2="195" y2="184" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="rect-neutral" x="200" y="160" width="120" height="48" rx="8"/>
+            <text x="260" y="189" text-anchor="middle">kotlinc</text>
+            <line x1="325" y1="184" x2="375" y2="184" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="rect-neutral" x="380" y="160" width="120" height="48" rx="8"/>
+            <text x="440" y="184" text-anchor="middle">JVM bytecode</text>
+            <text x="440" y="200" text-anchor="middle" class="muted" font-size="11">(.class)</text>
+            <line x1="505" y1="184" x2="555" y2="184" class="stroke" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect class="accent-fill" x="560" y="160" width="140" height="48" rx="8" fill="#eef0ff" stroke="var(--accent)"/>
+            <text x="630" y="189" text-anchor="middle">JVM + JIT</text>
+          </g>
+        </svg>
+        <div class="caption">Both end up as optimized machine code — but Kotlin has a deterministic compile step that catches errors before runtime.</div>
+      </div>
+
+      <h3 id="runtime-strengths">Performance strengths</h3>
+      <ul class="clean">
+        <li><strong>Node.js</strong> excels at <em>I/O-bound</em> workloads — web servers, real-time streaming, fan-out to many slow dependencies.</li>
+        <li><strong>Kotlin / JVM</strong> shines on <em>CPU-bound</em> tasks — business logic, financial transactions, heavy data processing.</li>
+      </ul>
+
+      <div class="callout tip">
+        <strong>Mental model</strong>
+        Picture Node.js as a single barista juggling many drink tickets without ever blocking, and the JVM as a kitchen brigade where multiple cooks work in parallel and the head chef (JIT) keeps reorganizing the line for speed.
+      </div>
+    </section>
+
+    <section id="syntax">
+      <h2><span class="num">02</span>Syntax Essentials</h2>
+      <p class="section-lead">Before diving deeper, a quick tour of how everyday Kotlin actually reads — plus the two idioms that most define the language's feel.</p>
+
+      <h3 id="syntax-basics">Basic syntax tour</h3>
+      <p>Most things you'd write in JS/TS have a direct Kotlin counterpart. The cheat sheet below covers ~80% of what you'll see in a typical file.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>TypeScript</div>
+<pre class="language-typescript"><code>// function with default arg
+function greet(name: string, greeting = "Hello") {
+  return `${greeting}, ${name}!`;
+}
+
+// "class" with constructor
+class User {
+  constructor(
+    public id: number,
+    public name: string,
+  ) {}
+}
+
+// switch-style branching
+function tier(score: number): string {
+  if (score &gt;= 90) return "gold";
+  else if (score &gt;= 70) return "silver";
+  else return "bronze";
+}</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>// function with default arg + string template
+fun greet(name: String, greeting: String = "Hello") =
+    "$greeting, $name!"
+
+// data class: ctor, equals, hashCode, copy() free
+data class User(val id: Int, val name: String)
+
+// `when` as an expression — returns a value
+fun tier(score: Int): String = when {
+    score &gt;= 90 -> "gold"
+    score &gt;= 70 -> "silver"
+    else        -> "bronze"
+}</code></pre>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>Concept</th><th>TypeScript</th><th>Kotlin</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">Variable</td><td class="node-cell"><code>const x = 1</code> / <code>let y = 2</code></td><td class="kotlin-cell"><code>val x = 1</code> / <code>var y = 2</code></td></tr>
+          <tr><td class="feature">Function</td><td class="node-cell"><code>function f(a: number): number</code></td><td class="kotlin-cell"><code>fun f(a: Int): Int</code></td></tr>
+          <tr><td class="feature">String interpolation</td><td class="node-cell"><code>`Hello, ${name}`</code></td><td class="kotlin-cell"><code>"Hello, $name"</code> or <code>"${user.name}"</code></td></tr>
+          <tr><td class="feature">Lambda</td><td class="node-cell"><code>(x) =&gt; x * 2</code></td><td class="kotlin-cell"><code>{ x -&gt; x * 2 }</code></td></tr>
+          <tr><td class="feature">Object/Map literal</td><td class="node-cell"><code>{ id: 1, name: "Ada" }</code></td><td class="kotlin-cell"><code>mapOf("id" to 1, "name" to "Ada")</code></td></tr>
+          <tr><td class="feature">If as expression</td><td class="node-cell">ternary <code>cond ? a : b</code></td><td class="kotlin-cell"><code>val r = if (cond) a else b</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout tip">
+        <strong>Idiom worth memorizing</strong>
+        <code>data class</code> gives you equality, hashing, <code>toString</code>, and a <code>.copy()</code> method for free. It's the everyday container for DTOs, domain models, and request/response objects.
+      </div>
+
+      <h3 id="extension">Extension functions</h3>
+      <p>You can add new methods to <em>existing</em> types — even types you don't own — without subclassing or wrapping them. The compiler resolves these statically; nothing is mutated at runtime.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>TypeScript</div>
+<pre class="language-typescript"><code>// usually a free function, or you reach
+// for prototype patching (avoid):
+function isEmail(s: string): boolean {
+  return /^[^@]+@[^@]+\.[^@]+$/.test(s);
+}
+
+if (isEmail(input)) { /* ... */ }</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>// extend String itself — reads like a method
+fun String.isEmail(): Boolean =
+    matches(Regex("^[^@]+@[^@]+\\.[^@]+$"))
+
+if (input.isEmail()) { /* ... */ }</code></pre>
+        </div>
+      </div>
+
+      <p>Extensions power much of the standard library — <code>"abc".reversed()</code>, <code>list.sumOf { ... }</code>, and most collection operators are extension functions on the underlying type.</p>
+
+      <h3 id="scope-fns">Scope functions: <code>let</code>, <code>apply</code>, <code>run</code>, <code>also</code>, <code>with</code></h3>
+      <p>These five functions let you execute a block in the context of an object. They differ along two axes: how the object is referenced inside the block (<code>it</code> vs <code>this</code>), and what the block returns (the object itself vs the block's result).</p>
+
+      <table>
+        <thead><tr><th>Function</th><th>Refers to object as</th><th>Returns</th><th>Use it for</th></tr></thead>
+        <tbody>
+          <tr><td class="feature"><code>let</code></td><td><code>it</code></td><td>block result</td><td>null-checks &amp; transforms: <code>user?.let { sendEmail(it) }</code></td></tr>
+          <tr><td class="feature"><code>apply</code></td><td><code>this</code></td><td>the object</td><td>configuring an object: <code>Person().apply { name = "Ada" }</code></td></tr>
+          <tr><td class="feature"><code>run</code></td><td><code>this</code></td><td>block result</td><td>compute a value while accessing members</td></tr>
+          <tr><td class="feature"><code>also</code></td><td><code>it</code></td><td>the object</td><td>side effects in a chain: <code>obj.also { log(it) }</code></td></tr>
+          <tr><td class="feature"><code>with</code></td><td><code>this</code></td><td>block result</td><td>grouping calls on a non-null receiver</td></tr>
+        </tbody>
+      </table>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>TypeScript</div>
+<pre class="language-typescript"><code>// null-check then transform
+if (user) {
+  sendEmail(user);
+}
+
+// stepwise object setup
+const p = new Person();
+p.name = "Ada";
+p.age  = 36;
+return p;</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>// `let` runs only when non-null
+user?.let { sendEmail(it) }
+
+// `apply` configures and returns the receiver
+val p = Person().apply {
+    name = "Ada"
+    age  = 36
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <strong>Easy to overuse</strong>
+        Scope functions can make code dense fast. A good rule: reach for <code>let</code> for null-safe chains, <code>apply</code> for builders, and reconsider if you find yourself nesting three of them.
+      </div>
+    </section>
+
+    <section id="concurrency">
+      <h2><span class="num">03</span>Concurrency: Event Loop vs. Coroutines</h2>
+      <p class="section-lead">This is where the daily experience of writing async code changes the most.</p>
+
+      <h3 id="event-loop">Node.js: the event loop</h3>
+      <p>All your JavaScript runs on a single thread. Asynchronous operations (file reads, network calls, timers) are offloaded to libuv's thread pool or to the OS, and their completion callbacks are picked up by the event loop when they resolve.</p>
+
+      <h3 id="coroutines">Kotlin: coroutines</h3>
+      <p>Coroutines are <strong>lightweight, suspendable computations</strong> that run on top of real threads. A single thread can host thousands of coroutines, and the language has first-class <code>suspend</code> functions so async code reads like sequential code — without a callback or <code>.then()</code> in sight.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>JavaScript / TypeScript</div>
+<pre class="language-javascript"><code>async function loadUser(id) {
+  const user = await db.findUser(id);
+  const posts = await api.fetchPosts(user.id);
+  return { user, posts };
+}
+
+// concurrent
+const [a, b] = await Promise.all([
+  loadUser(1),
+  loadUser(2),
+]);</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>suspend fun loadUser(id: Int): UserBundle {
+    val user  = db.findUser(id)
+    val posts = api.fetchPosts(user.id)
+    return UserBundle(user, posts)
+}
+
+// concurrent
+coroutineScope {
+    val a = async { loadUser(1) }
+    val b = async { loadUser(2) }
+    listOf(a.await(), b.await())
+}</code></pre>
+        </div>
+      </div>
+
+      <h3 id="structured">Structured concurrency</h3>
+      <p>Kotlin ties every coroutine's lifecycle to a <strong>scope</strong>. When the scope ends — because it completed, was cancelled, or threw — every child coroutine inside it is cancelled too. No orphaned tasks. No leaked timers. No "I thought that <code>fire-and-forget</code> Promise was harmless."</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Structured concurrency tree">
+          <g font-family="Inter, sans-serif" font-size="13">
+            <rect class="accent-fill" x="220" y="20" width="200" height="44" rx="10" fill="#eef0ff" stroke="var(--accent)"/>
+            <text x="320" y="47" text-anchor="middle" font-weight="600">coroutineScope { ... }</text>
+
+            <line x1="320" y1="64" x2="120" y2="110" class="stroke"/>
+            <line x1="320" y1="64" x2="320" y2="110" class="stroke"/>
+            <line x1="320" y1="64" x2="520" y2="110" class="stroke"/>
+
+            <rect class="kotlin-fill" x="40"  y="110" width="160" height="40" rx="8" fill="#f3eeff" stroke="var(--kotlin)"/>
+            <text x="120" y="135" text-anchor="middle">launch { loadUser }</text>
+            <rect class="kotlin-fill" x="240" y="110" width="160" height="40" rx="8" fill="#f3eeff" stroke="var(--kotlin)"/>
+            <text x="320" y="135" text-anchor="middle">async { fetchPosts }</text>
+            <rect class="kotlin-fill" x="440" y="110" width="160" height="40" rx="8" fill="#f3eeff" stroke="var(--kotlin)"/>
+            <text x="520" y="135" text-anchor="middle">launch { log }</text>
+
+            <line x1="120" y1="150" x2="120" y2="180" class="stroke"/>
+            <rect class="rect-neutral" x="60"  y="180" width="120" height="36" rx="8"/>
+            <text x="120" y="203" text-anchor="middle" class="muted">db query</text>
+
+            <line x1="320" y1="150" x2="320" y2="180" class="stroke"/>
+            <rect class="rect-neutral" x="260" y="180" width="120" height="36" rx="8"/>
+            <text x="320" y="203" text-anchor="middle" class="muted">http call</text>
+          </g>
+        </svg>
+        <div class="caption">If the parent scope is cancelled, every descendant is cancelled with it. Lifecycle is a tree, not a free-for-all.</div>
+      </div>
+
+      <div class="callout warn">
+        <strong>Coming from Node?</strong>
+        An unhandled rejected Promise can quietly stay alive and bite you later. Kotlin's structured concurrency makes that anti-pattern essentially impossible inside a scope — and that's a feature, not a limitation.
+      </div>
+    </section>
+
+    <section id="types">
+      <h2><span class="num">04</span>Type Systems &amp; Safety</h2>
+      <p class="section-lead">TypeScript gives you static analysis on top of JavaScript. Kotlin's type system is more rigorous and is enforced all the way down to the runtime.</p>
+
+      <h3 id="null-safety">Null safety</h3>
+      <p>In Kotlin, types are <strong>non-nullable by default</strong>. To allow <code>null</code>, you opt in with a <code>?</code>. The compiler then forces you to handle the nullable case before you can dereference it — wiping out a huge class of <code>NullPointerException</code> bugs.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>TypeScript</div>
+<pre class="language-typescript"><code>function greet(name: string | null) {
+  // compiles, but easy to forget the null check
+  return "Hello, " + name.toUpperCase();
+  //                  ^ runtime crash if null
+}</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>fun greet(name: String?): String {
+    // won't compile: name.uppercase()
+    return "Hello, " + (name?.uppercase() ?: "stranger")
+}</code></pre>
+        </div>
+      </div>
+
+      <h3 id="sealed">Sealed classes vs. discriminated unions</h3>
+      <p>A Kotlin <code>sealed</code> class defines a <em>closed hierarchy</em>: the compiler knows every subtype that can exist. In a <code>when</code> expression, it enforces exhaustiveness — add a new variant later and every call site that doesn't handle it stops compiling.</p>
+      <p>TypeScript's discriminated unions are convention-based: the compiler will help you, but only if you remember to use the discriminant and don't introduce escape hatches.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>TypeScript</div>
+<pre class="language-typescript"><code>type Result =
+  | { kind: "ok"; value: number }
+  | { kind: "err"; reason: string };
+
+function render(r: Result) {
+  switch (r.kind) {
+    case "ok":  return r.value.toString();
+    case "err": return r.reason;
+    // add a new variant later? nothing forces
+    // you to update every switch statement.
+  }
+}</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>sealed interface Result {
+    data class Ok(val value: Int) : Result
+    data class Err(val reason: String) : Result
+}
+
+fun render(r: Result): String = when (r) {
+    is Result.Ok  -> r.value.toString()
+    is Result.Err -> r.reason
+    // add a new variant -> this when stops
+    // compiling until you handle it.
+}</code></pre>
+        </div>
+      </div>
+
+      <h3 id="immutability">Immutability by default</h3>
+      <p>Kotlin makes the mutable/immutable distinction explicit at the language level: <code>val</code> for read-only bindings, <code>var</code> for reassignable ones. The compiler enforces it.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>JavaScript</div>
+<pre class="language-javascript"><code>const x = 10;     // can't reassign
+let   y = 10;     // can reassign
+
+// but `const` arrays/objects can still mutate:
+const xs = [1, 2];
+xs.push(3);       // fine, no error</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin</div>
+<pre class="language-kotlin"><code>val x = 10        // read-only binding
+var y = 10        // reassignable
+
+val xs = listOf(1, 2)
+// xs.add(3)      // won't compile — List is read-only
+val ys = mutableListOf(1, 2)
+ys.add(3)         // ok, MutableList is opt-in</code></pre>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <strong>Habit to build</strong>
+        Reach for <code>val</code> first and only switch to <code>var</code> when you actually need reassignment. Same for <code>listOf</code> / <code>mapOf</code> over their mutable variants.
+      </div>
+    </section>
+
+    <section id="ecosystem">
+      <h2><span class="num">05</span>Ecosystem &amp; Build Tools</h2>
+      <p class="section-lead">The tooling and framework landscape is different too — different in priorities, not just in names.</p>
+
+      <h3 id="build">Build systems</h3>
+      <table>
+        <thead><tr><th>Concern</th><th>Node.js (npm)</th><th>Kotlin (Gradle)</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">Configuration</td><td class="node-cell">JSON (<code>package.json</code>)</td><td class="kotlin-cell">Kotlin / Groovy DSL (<code>build.gradle.kts</code>)</td></tr>
+          <tr><td class="feature">Execution model</td><td class="node-cell">Linear script execution</td><td class="kotlin-cell">Task graph, parallelizable</td></tr>
+          <tr><td class="feature">Incremental builds</td><td class="node-cell">Limited, usually per-tool</td><td class="kotlin-cell">First-class, with build cache</td></tr>
+          <tr><td class="feature">Large-project payoff</td><td class="node-cell">—</td><td class="kotlin-cell">Up to ~90% build-time reduction via caching</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="frameworks">Frameworks</h3>
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>Node.js</div>
+<pre class="language-javascript"><code>import express from "express";
+const app = express();
+
+app.get("/hello", (req, res) =&gt; {
+  res.json({ message: "Hello, world!" });
+});
+
+app.listen(3000);</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin (Ktor)</div>
+<pre class="language-kotlin"><code>fun main() {
+    embeddedServer(Netty, port = 3000) {
+        install(ContentNegotiation) { json() }
+        routing {
+            get("/hello") {
+                call.respond(mapOf("message" to "Hello, world!"))
+            }
+        }
+    }.start(wait = true)
+}</code></pre>
+        </div>
+      </div>
+      <ul class="clean">
+        <li><strong>Express.js</strong> is the minimalist standard in Node.js.</li>
+        <li><strong>Ktor</strong> plays the same role in Kotlin: modular, coroutine-native, minimalist by default.</li>
+        <li><strong>Spring Boot</strong> is where many Kotlin teams land for large enterprise systems — opinionated, batteries-included, and more comprehensive than typical Node.js frameworks.</li>
+      </ul>
+
+      <h3 id="ide">IDE support</h3>
+      <p>Many Node.js developers live in VS Code. Kotlin's authoring experience is most polished in <strong>IntelliJ IDEA</strong>, which has deep semantic understanding of the JVM and ships best-in-class refactoring tools. VS Code with the Kotlin plugin works, but you'll feel the gap.</p>
+
+      <div class="callout">
+        <strong>Tip for week one</strong>
+        Install IntelliJ IDEA Community Edition and turn on the "Kotlin REPL" / "Kotlin Notebook" so you can experiment with snippets without setting up a full project. Pair it with the official <a href="https://kotlinlang.org/docs/home.html">Kotlin docs</a>.
+      </div>
+    </section>
+
+    <section id="testing">
+      <h2><span class="num">06</span>Testing Basics</h2>
+      <p class="section-lead">If you've used Jest or Vitest, the mental model maps over cleanly — the names and decorators differ, but the rhythm is the same.</p>
+
+      <table>
+        <thead><tr><th>Concern</th><th>Node.js (Jest / Vitest)</th><th>Kotlin (JVM)</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">Default runner</td><td class="node-cell">Jest / Vitest built-in</td><td class="kotlin-cell">JUnit 5 (via Gradle <code>test</code> task)</td></tr>
+          <tr><td class="feature">Idiomatic alt.</td><td class="node-cell">Mocha + Chai</td><td class="kotlin-cell">Kotest (BDD-style, Kotlin-native)</td></tr>
+          <tr><td class="feature">Mocks</td><td class="node-cell"><code>jest.fn()</code> / <code>vi.mock()</code></td><td class="kotlin-cell">MockK (Kotlin-first) or Mockito</td></tr>
+          <tr><td class="feature">Assertions</td><td class="node-cell"><code>expect(x).toBe(...)</code></td><td class="kotlin-cell"><code>assertEquals(...)</code> or AssertJ / Kotest matchers</td></tr>
+          <tr><td class="feature">Run command</td><td class="node-cell"><code>npm test</code></td><td class="kotlin-cell"><code>./gradlew test</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="test-frameworks">JUnit 5 and Kotest side-by-side</h3>
+      <p>JUnit 5 is the default on the JVM and what most production codebases use. Kotest layers a more idiomatic, Kotlin-friendly DSL on top — closer in feel to Jest's <code>describe</code>/<code>it</code>.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>Jest / Vitest</div>
+<pre class="language-typescript"><code>import { describe, it, expect } from "vitest";
+import { tier } from "./scoring";
+
+describe("tier()", () =&gt; {
+  it("returns gold for high scores", () =&gt; {
+    expect(tier(95)).toBe("gold");
+  });
+
+  it("returns bronze below 70", () =&gt; {
+    expect(tier(40)).toBe("bronze");
+  });
+});</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>JUnit 5</div>
+<pre class="language-kotlin"><code>import kotlin.test.assertEquals
+import org.junit.jupiter.api.Test
+
+class ScoringTest {
+    @Test
+    fun `returns gold for high scores`() {
+        assertEquals("gold", tier(95))
+    }
+
+    @Test
+    fun `returns bronze below 70`() {
+        assertEquals("bronze", tier(40))
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotest (BDD-style)</div>
+<pre class="language-kotlin"><code>import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
+
+class ScoringSpec : DescribeSpec({
+    describe("tier()") {
+        it("returns gold for high scores") {
+            tier(95) shouldBe "gold"
+        }
+        it("returns bronze below 70") {
+            tier(40) shouldBe "bronze"
+        }
+    }
+})</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>MockK example</div>
+<pre class="language-kotlin"><code>import io.mockk.every
+import io.mockk.mockk
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class UserServiceTest {
+    @Test
+    fun `returns user from repo`() {
+        val repo = mockk&lt;UserRepo&gt;()
+        every { repo.find(1) } returns User(1, "Ada")
+
+        val svc = UserService(repo)
+        assertEquals("Ada", svc.nameOf(1))
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <strong>Backtick names</strong>
+        Wrapping a test name in backticks (<code>`like this`</code>) lets you use plain English — spaces and all — for the function name. It's idiomatic in tests and reads beautifully in failure output.
+      </div>
+
+      <h3 id="test-coroutines">Testing coroutines</h3>
+      <p>Async tests don't need callbacks or <code>await</code> at the test level. The <code>kotlinx-coroutines-test</code> module gives you <code>runTest { }</code>, which runs your suspending code on a virtual scheduler — delays are skipped, timing is deterministic.</p>
+
+      <div class="compare">
+        <div>
+          <div class="head"><span class="dot node"></span>Vitest async</div>
+<pre class="language-typescript"><code>it("loads a user", async () =&gt; {
+  const user = await loadUser(1);
+  expect(user.name).toBe("Ada");
+});</code></pre>
+        </div>
+        <div>
+          <div class="head"><span class="dot kotlin"></span>Kotlin + coroutines-test</div>
+<pre class="language-kotlin"><code>import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class UserLoaderTest {
+    @Test
+    fun `loads a user`() = runTest {
+        val user = loadUser(1)
+        assertEquals("Ada", user.name)
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Starter stack</strong>
+        For a new project: <strong>JUnit 5</strong> as the runner, <strong>MockK</strong> for mocks, <strong>kotlinx-coroutines-test</strong> for suspending code, and Kotest's <strong>matchers</strong> library if you want <code>shouldBe</code>-style assertions without committing to its full DSL.
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+  // Scroll-spy for the sidebar
+  const links = document.querySelectorAll('aside nav a');
+  const targets = [...links].map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const byId = new Map(targets.map(t => [t.id, t]));
+  const linkFor = id => [...links].find(a => a.getAttribute('href') === '#' + id);
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const l = linkFor(e.target.id);
+        if (l) l.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  targets.forEach(t => io.observe(t));
+
+  // Theme toggle
+  const toggle = document.getElementById('themeToggle');
+  toggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  });
+</script>
+</body>
+</html>
