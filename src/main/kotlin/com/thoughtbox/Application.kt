@@ -63,7 +63,7 @@ fun Application.module(config: Config = Config.fromEnv()) {
         allowMethod(io.ktor.http.HttpMethod.Post)
         config.corsAllowedOrigins.forEach { origin ->
             val uri = URI.create(origin)
-            allowHost(uri.host, schemes = listOf(uri.scheme))
+            allowHost(uri.authority, schemes = listOf(uri.scheme))
         }
     }
 
