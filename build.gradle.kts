@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
+    alias(libs.plugins.sentry.jvm)
     application
 }
 
@@ -14,6 +15,14 @@ kotlin {
 
 application {
     mainClass.set("com.thoughtbox.ApplicationKt")
+}
+
+sentry {
+    includeSourceContext.set(true)
+
+    org.set("hmaronen")
+    projectName.set("kotlin")
+    authToken.set(System.getenv("SENTRY_AUTH_TOKEN"))
 }
 
 dependencies {
@@ -48,4 +57,3 @@ tasks.shadowJar {
     archiveFileName.set("thought-box.jar")
     mergeServiceFiles()
 }
-

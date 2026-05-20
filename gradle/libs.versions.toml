@@ -9,6 +9,7 @@ kotliquery = "1.9.0"
 postgres = "42.7.4"
 aws = "2.29.6"
 sentry = "7.16.0"
+sentry-gradle = "6.7.1"
 junit = "5.11.3"
 kotest = "5.9.1"
 mockk = "1.13.13"
@@ -38,5 +39,5 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
-
+shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
+sentry-jvm = { id = "io.sentry.jvm.gradle", version.ref = "sentry-gradle" }

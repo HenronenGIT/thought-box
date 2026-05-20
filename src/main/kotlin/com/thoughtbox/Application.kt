@@ -7,6 +7,7 @@ import com.thoughtbox.db.runMigrations
 import com.thoughtbox.enrichment.OpenAiEnricher
 import com.thoughtbox.http.configureRoutes
 import com.thoughtbox.observability.configureObservability
+import com.thoughtbox.observability.initializeSentry
 import com.thoughtbox.pipeline.StartupRecovery
 import com.thoughtbox.pipeline.ThoughtPipeline
 import com.thoughtbox.storage.S3BlobStore
@@ -33,6 +34,7 @@ import java.net.URI
 // app.listen(PORT). In Ktor, embeddedServer(...).start(...) owns that lifecycle.
 fun main() {
     val config = Config.fromEnv()
+    initializeSentry(config)
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
         module(config)
     }.start(wait = true)

@@ -19,13 +19,18 @@ import java.util.UUID
 
 // Cross-cutting runtime instrumentation. Node.js mental model: request logging
 // middleware plus an error-handling middleware wired to Sentry.
-fun Application.configureObservability(config: Config) {
-    if (config.sentryDsn != null) {
+fun initializeSentry(config: Config) {
+    if (config.sentryDsn != null && !Sentry.isEnabled()) {
         Sentry.init { options ->
             options.dsn = config.sentryDsn
             options.environment = config.appEnv
+            options.isDebug = config.appEnv == "dev"
         }
     }
+}
+
+fun Application.configureObservability(config: Config) {
+    initializeSentry(config)
 
     intercept(ApplicationCallPipeline.Monitoring) {
         // MDC is thread-local logging context. Logback includes correlation_id in
