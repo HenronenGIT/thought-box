@@ -108,11 +108,15 @@ class ThoughtRepository(private val dataSource: DataSource) {
             tx.run(
                 queryOf(
                     """
-                    select t.*, e.category, array_to_string(e.tags, ',') as tags_csv, e.title, e.summary, e.model, e.prompt_version
-                    from thoughts t
-                    left join thought_enrichments e on e.thought_id = t.id
-                    where t.status = 'enriching' and t.transcript is not null and e.thought_id is null
-                    order by t.created_at asc
+                    select *, null::text as category, null::text as tags_csv,
+                        null::text as title, null::text as summary, null::text as model, null::text as prompt_version
+                    from thoughts
+                    where status = 'enriching'
+                        and transcript is not null
+                        and not exists (
+                            select 1 from thought_enrichments where thought_enrichments.thought_id = thoughts.id
+                        )
+                    order by created_at asc
                     for update skip locked
                     limit 1
                     """.trimIndent(),
