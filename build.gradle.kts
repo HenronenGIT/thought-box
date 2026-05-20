@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
-    alias(libs.plugins.sentry.jvm)
     application
 }
 
@@ -15,14 +14,6 @@ kotlin {
 
 application {
     mainClass.set("com.thoughtbox.ApplicationKt")
-}
-
-sentry {
-    includeSourceContext.set(true)
-
-    org.set("hmaronen")
-    projectName.set("kotlin")
-    authToken.set(System.getenv("SENTRY_AUTH_TOKEN"))
 }
 
 dependencies {
@@ -47,10 +38,35 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.mockk)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+fun loadDotEnv(file: File): Map<String, String> {
+    if (!file.exists()) return emptyMap()
+    return file.readLines()
+        .map { it.trim() }
+        .filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
+        .associate { line ->
+            val key = line.substringBefore("=").trim()
+            val value = line.substringAfter("=").trim().trim('"', '\'')
+            key to value
+        }
+}
+
+tasks.named<JavaExec>("run") {
+    environment(loadDotEnv(rootProject.file(".env")))
+}
+
+tasks.register<JavaExec>("runDev") {
+    group = "application"
+    description = "Runs the backend locally with environment variables from .env."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set(application.mainClass)
+    environment(loadDotEnv(rootProject.file(".env")))
 }
 
 tasks.shadowJar {
