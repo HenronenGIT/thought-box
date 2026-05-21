@@ -18,10 +18,16 @@ fun dataSource(config: DatabaseConfig): HikariDataSource {
 
 // Flyway scans src/main/resources/db/migration and applies new V*.sql files.
 fun runMigrations(config: DatabaseConfig) {
-    val result = Flyway.configure()
+    val flyway = Flyway.configure()
         .locations("classpath:db/migration")
         .dataSource(config.url, config.user, config.password)
         .load()
-        .migrate()
+
+    val discovered = flyway.info().all().joinToString(",") { migration ->
+        "${migration.version ?: "repeatable"}:${migration.description}:${migration.state}"
+    }
+    println("flyway_migrations_discovered=${flyway.info().all().size} [$discovered]")
+
+    val result = flyway.migrate()
     println("flyway_migrations_executed=${result.migrationsExecuted}")
 }
