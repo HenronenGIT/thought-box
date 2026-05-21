@@ -20,6 +20,7 @@ fun dataSource(config: DatabaseConfig): HikariDataSource {
 fun runMigrations(config: DatabaseConfig) {
     val flyway = Flyway.configure()
         .locations("classpath:db/migration")
+        .validateMigrationNaming(true)
         .dataSource(config.url, config.user, config.password)
         .load()
 

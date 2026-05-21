@@ -1,0 +1,10 @@
+.git
+.gradle
+build
+
+apps/web/.next
+apps/web/node_modules
+
+**/.DS_Store
+**/build
+**/node_modules
