@@ -34,7 +34,7 @@ import java.net.URI
 // app.listen(PORT). In Ktor, embeddedServer(...).start(...) owns that lifecycle.
 fun main() {
     val config = Config.fromEnv()
-    initializeSentry(config)
+    // initializeSentry(config)
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
         module(config)
     }.start(wait = true)

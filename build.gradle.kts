@@ -71,5 +71,6 @@ tasks.register<JavaExec>("runDev") {
 
 tasks.shadowJar {
     archiveFileName.set("thought-box.jar")
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 }
