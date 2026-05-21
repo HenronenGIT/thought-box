@@ -33,5 +33,23 @@ class ConfigTest {
             Config.fromEnv(required - "DATABASE_URL")
         }.message shouldBe "Missing required env var: DATABASE_URL"
     }
-}
 
+    @Test
+    fun `trims environment values`() {
+        val config = Config.fromEnv(
+            required + mapOf(
+                "APP_ENV" to " prod ",
+                "PORT" to " 9090\n",
+                "DATABASE_URL" to " jdbc:postgresql://localhost:5432/thoughts_dev?sslmode=require\n",
+                "S3_ENDPOINT" to " http://localhost:4566 ",
+                "SENTRY_DSN" to " https://example.com/1\n",
+            ),
+        )
+
+        config.appEnv shouldBe "prod"
+        config.port shouldBe 9090
+        config.database.url shouldBe "jdbc:postgresql://localhost:5432/thoughts_dev?sslmode=require"
+        config.s3.endpoint shouldBe "http://localhost:4566"
+        config.sentryDsn shouldBe "https://example.com/1"
+    }
+}

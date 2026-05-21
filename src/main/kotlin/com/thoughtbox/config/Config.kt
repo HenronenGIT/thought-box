@@ -17,13 +17,13 @@ data class Config(
     companion object {
         // Accepting a Map makes this easy to unit test without mutating real env.
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
-            fun required(name: String) = env[name]?.takeIf { it.isNotBlank() }
+            fun required(name: String) = env[name]?.trim()?.takeIf { it.isNotBlank() }
                 ?: throw IllegalArgumentException("Missing required env var: $name")
-            fun optionalInt(name: String, default: Int) = env[name]?.toIntOrNull() ?: default
-            fun optionalLong(name: String, default: Long) = env[name]?.toLongOrNull() ?: default
+            fun optionalInt(name: String, default: Int) = env[name]?.trim()?.toIntOrNull() ?: default
+            fun optionalLong(name: String, default: Long) = env[name]?.trim()?.toLongOrNull() ?: default
 
             return Config(
-                appEnv = env["APP_ENV"]?.takeIf { it.isNotBlank() } ?: "dev",
+                appEnv = env["APP_ENV"]?.trim()?.takeIf { it.isNotBlank() } ?: "dev",
                 port = optionalInt("PORT", 8080),
                 database = DatabaseConfig(
                     url = required("DATABASE_URL"),
@@ -37,12 +37,12 @@ data class Config(
                 s3 = S3Config(
                     bucket = required("S3_BUCKET"),
                     region = required("S3_REGION"),
-                    endpoint = env["S3_ENDPOINT"]?.takeIf { it.isNotBlank() },
+                    endpoint = env["S3_ENDPOINT"]?.trim()?.takeIf { it.isNotBlank() },
                     accessKeyId = required("AWS_ACCESS_KEY_ID"),
                     secretAccessKey = required("AWS_SECRET_ACCESS_KEY"),
                 ),
                 openAiApiKey = required("OPENAI_API_KEY"),
-                sentryDsn = env["SENTRY_DSN"]?.takeIf { it.isNotBlank() },
+                sentryDsn = env["SENTRY_DSN"]?.trim()?.takeIf { it.isNotBlank() },
                 limits = LimitsConfig(
                     maxDurationMs = optionalLong("MAX_THOUGHT_DURATION_MS", 60_000),
                     minDurationMs = optionalLong("MIN_THOUGHT_DURATION_MS", 1_000),
