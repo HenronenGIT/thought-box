@@ -51,7 +51,7 @@ jobs:
           done
           case "$DATABASE_URL" in
             postgres://*|postgresql://*) ;;
-            jdbc:postgresql://*)
+            jdbc:*)
               if [ -z "${DATABASE_USER:-}" ] || [ -z "${DATABASE_PASSWORD:-}" ]; then
                 echo "::error::DATABASE_USER and DATABASE_PASSWORD are required when DATABASE_URL is JDBC"
                 exit 1
