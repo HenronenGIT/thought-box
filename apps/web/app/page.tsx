@@ -23,7 +23,7 @@ type Thought = {
   last_error: string | null;
 };
 
-const categories = ["idea", "todo", "feeling", "question", "observation", "reminder"];
+const categories = ["idea", "observation", "feeling", "learning"];
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 function pickMimeType() {
@@ -190,4 +190,3 @@ export default function Home() {
     </main>
   );
 }
-
