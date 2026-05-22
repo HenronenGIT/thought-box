@@ -16,6 +16,8 @@ jobs:
       ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
       CLOUD_RUN_SERVICE: thought-box-api-go
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'http://localhost:3000' }}
       S3_BUCKET: ${{ secrets.S3_BUCKET }}
       S3_REGION: ${{ secrets.S3_REGION }}
@@ -47,6 +49,22 @@ jobs:
           done
           case "$DATABASE_URL" in
             postgres://*|postgresql://*) ;;
+            jdbc:postgresql://*)
+              if [ -z "${DATABASE_USER:-}" ] || [ -z "${DATABASE_PASSWORD:-}" ]; then
+                echo "::error::DATABASE_USER and DATABASE_PASSWORD are required when DATABASE_URL is JDBC"
+                exit 1
+              fi
+              python3 <<'PY' >> "$GITHUB_ENV"
+import os
+from urllib.parse import quote, urlsplit, urlunsplit
+
+raw = os.environ["DATABASE_URL"].removeprefix("jdbc:")
+parsed = urlsplit(raw)
+user = quote(os.environ["DATABASE_USER"], safe="")
+password = quote(os.environ["DATABASE_PASSWORD"], safe="")
+print("DATABASE_URL=" + urlunsplit((parsed.scheme, f"{user}:{password}@{parsed.netloc}", parsed.path, parsed.query, parsed.fragment)))
+PY
+              ;;
             *)
               echo "::error::DATABASE_URL must be a pgx-native postgres:// URL, not JDBC"
               exit 1
