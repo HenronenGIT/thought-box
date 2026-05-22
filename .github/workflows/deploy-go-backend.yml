@@ -80,5 +80,5 @@ jobs:
           echo "GET /"
           curl --silent --show-error --include "$URL/" || true
           echo
-          echo "GET /healthz"
-          curl --fail --silent --show-error --include "$URL/healthz"
+          echo "GET /config"
+          curl --fail --silent --show-error --include "$URL/config"
