@@ -1,0 +1,18 @@
+[tools]
+go = "1.26"
+java = "21"
+node = "24"
+
+[tasks."api-go:dev"]
+description = "Run the Go API locally"
+run = "scripts/api-go-dev.sh"
+
+[tasks."api-go:test"]
+description = "Test the Go API"
+dir = "apps/api-go"
+run = "go test ./..."
+
+[tasks."api-go:build"]
+description = "Build the Go API"
+dir = "apps/api-go"
+run = "go build ./cmd/api"

@@ -7,3 +7,4 @@ node_modules/
 out/
 .env.production
 .kotlin
+gcp-sa.json
