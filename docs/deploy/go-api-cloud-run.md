@@ -26,10 +26,14 @@ Required env:
 - `AWS_SECRET_ACCESS_KEY`
 - `CORS_ALLOWED_ORIGINS`
 
+Cloud Run caveat:
+
+- Do not use `/healthz` externally. Cloud Run reserves some URL paths ending in `z`; use `/health`.
+
 Smoke checks:
 
 ```sh
-curl "$GO_API_URL/healthz"
+curl "$GO_API_URL/health"
 curl "$GO_API_URL/config"
 curl "$GO_API_URL/me"
 curl "$GO_API_URL/thoughts"

@@ -34,7 +34,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, repo *repository.ThoughtR
 	router.Use(server.recoverPanic)
 	router.Use(server.correlationID)
 	router.Use(server.cors)
-	router.Get("/healthz", server.health)
+	router.Get("/health", server.health)
 	router.Get("/config", server.clientConfig)
 	router.Get("/me", server.me)
 	router.Post("/thoughts", server.createThought)

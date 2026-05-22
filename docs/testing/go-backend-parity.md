@@ -2,7 +2,7 @@
 
 Regression checklist:
 
-- `GET /healthz` returns `{ "ok": true, "env": string }`
+- `GET /health` returns `{ "ok": true, "env": string }`
 - `GET /config` returns upload limits
 - `GET /me` returns seeded user id
 - `POST /thoughts` accepts multipart audio, stores S3 object, returns `201`

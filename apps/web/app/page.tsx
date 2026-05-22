@@ -69,7 +69,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    fetchJson<{ ok: boolean; env: string }>("/healthz")
+    fetchJson<{ ok: boolean; env: string }>("/health")
       .then((body) => setHealth(`${body.ok ? "ok" : "bad"} / ${body.env}`))
       .catch(() => setHealth("offline"));
     fetchJson<ApiConfig>("/config").then(setConfig).catch((err) => setError(err.message));
