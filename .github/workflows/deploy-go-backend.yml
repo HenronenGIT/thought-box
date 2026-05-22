@@ -1,9 +1,7 @@
 name: Deploy Go backend
 
 on:
-  workflow_dispatch: {}
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,7 +16,7 @@ jobs:
       ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
       CLOUD_RUN_SERVICE: thought-box-api-go
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'http://localhost:3000' }}
+      CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
       S3_BUCKET: ${{ secrets.S3_BUCKET }}
       S3_REGION: ${{ secrets.S3_REGION }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -35,6 +33,7 @@ jobs:
             GCP_SERVICE_ACCOUNT_JSON
             ARTIFACT_REPOSITORY
             DATABASE_URL
+            CORS_ALLOWED_ORIGINS
             S3_BUCKET
             S3_REGION
             AWS_ACCESS_KEY_ID
@@ -73,12 +72,4 @@ jobs:
       - name: Smoke test
         run: |
           URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" --region "$GCP_REGION" --format='value(status.url)')"
-          echo "Cloud Run URL: $URL"
-          gcloud run services describe "$CLOUD_RUN_SERVICE" \
-            --region "$GCP_REGION" \
-            --format='table(status.latestReadyRevisionName,status.traffic[0].revisionName,status.traffic[0].percent,spec.template.spec.containers[0].image)'
-          echo "GET /"
-          curl --silent --show-error --include "$URL/" || true
-          echo
-          echo "GET /health"
-          curl --fail --silent --show-error --include "$URL/health"
+          curl --fail --silent --show-error "$URL/health"
