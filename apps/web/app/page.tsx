@@ -47,6 +47,7 @@ export default function Home() {
   const timerRef = useRef<number | null>(null);
 
   const activeTag = tag.trim();
+  const healthState = health.startsWith("ok") ? "ok" : health.startsWith("bad") ? "bad" : health;
   const filteredUrl = useMemo(() => {
     const url = new URL("/thoughts", apiBase);
     if (category) url.searchParams.set("category", category);
@@ -144,49 +145,73 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
-      <div className="topbar">
-        <h1>Thought Box</h1>
-        <div className="health">{health}</div>
-      </div>
-
-      <section className="recorder">
-        <div className="controls">
-          <button className={`record-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording}>
-            {recording ? "Stop" : "Rec"}
-          </button>
-          <div>
-            <strong>{Math.floor(elapsedMs / 1000)}s</strong>
-            {config ? <div className="meta">max {Math.floor(config.max_duration_ms / 1000)}s</div> : null}
-          </div>
+    <main className="app-shell">
+      <header className="app-header">
+        <div className="brand-stack">
+          <div className="eyebrow">Oxide system</div>
+          <h1 className="page-title">Thought Box</h1>
+          <p className="page-subtitle">Capture voice notes, let the pipeline transcribe and enrich them, then scan the archive by category or tag.</p>
         </div>
-        {error ? <div className="error">{error}</div> : null}
-      </section>
+        <div className="status-pill" data-state={healthState}>{health}</div>
+      </header>
 
-      <div className="chips">
-        {categories.map((item) => (
-          <button key={item} className={`chip ${category === item ? "active" : ""}`} onClick={() => setCategory(category === item ? null : item)}>
-            {item}
-          </button>
-        ))}
-        <input className="tag-input" value={tag} onChange={(event) => setTag(event.target.value)} placeholder="tag" />
+      <div className="main-grid">
+        <aside className="panel" aria-label="Capture and filters">
+          <div className="panel-header">
+            <h2 className="section-title">Capture</h2>
+            <p className="section-copy">Record a thought and send it into the enrichment queue.</p>
+          </div>
+
+          <div className="recorder-control">
+            <button className={`record-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording}>
+              {recording ? "Stop" : "Rec"}
+            </button>
+            <div>
+              <span className="timer-value">{Math.floor(elapsedMs / 1000)}s</span>
+              {config ? <div className="meta">max {Math.floor(config.max_duration_ms / 1000)}s</div> : null}
+            </div>
+          </div>
+
+          {error ? <div className="error">{error}</div> : null}
+
+          <div className="filter-stack">
+            <div className="panel-header">
+              <h2 className="section-title">Filters</h2>
+              <p className="section-copy">Refine the feed without leaving capture mode.</p>
+            </div>
+            <div className="chip-row">
+              {categories.map((item) => (
+                <button key={item} className={`chip ${category === item ? "active" : ""}`} onClick={() => setCategory(category === item ? null : item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
+            <input className="tag-input" value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Filter by tag" />
+          </div>
+        </aside>
+
+        <section className="thoughts" aria-label="Thought feed">
+          {thoughts.map((thought) => (
+            <article className="thought-card" key={thought.id}>
+              <div className="card-meta-row">
+                <div className="meta">{new Date(thought.created_at).toLocaleString()} / {thought.status}</div>
+                {thought.enrichment ? <div className="category-mark">{thought.enrichment.category}</div> : null}
+              </div>
+              <h2>{thought.enrichment?.title ?? "Untitled thought"}</h2>
+              {thought.enrichment ? <p>{thought.enrichment.summary}</p> : null}
+              {thought.transcript ? <p>{thought.transcript}</p> : null}
+              <audio controls src={`${apiBase}/thoughts/${thought.id}/audio`} />
+              {thought.enrichment ? <div className="tags">{thought.enrichment.tags.join(", ")}</div> : null}
+              {thought.last_error ? <div className="error">{thought.last_error}</div> : null}
+            </article>
+          ))}
+          {nextCursor ? (
+            <div className="load-row">
+              <button className="button-secondary" onClick={() => refreshList(nextCursor)}>Load more</button>
+            </div>
+          ) : null}
+        </section>
       </div>
-
-      <section className="thoughts">
-        {thoughts.map((thought) => (
-          <article className="card" key={thought.id}>
-            <div className="meta">{new Date(thought.created_at).toLocaleString()} / {thought.status}</div>
-            <h2>{thought.enrichment?.title ?? "Untitled thought"}</h2>
-            {thought.enrichment ? <p>{thought.enrichment.summary}</p> : null}
-            {thought.transcript ? <p>{thought.transcript}</p> : null}
-            <audio controls src={`${apiBase}/thoughts/${thought.id}/audio`} />
-            {thought.enrichment ? <div className="tags">{thought.enrichment.category} / {thought.enrichment.tags.join(", ")}</div> : null}
-            {thought.last_error ? <div className="error">{thought.last_error}</div> : null}
-          </article>
-        ))}
-      </section>
-
-      {nextCursor ? <button className="chip" onClick={() => refreshList(nextCursor)}>Load more</button> : null}
     </main>
   );
 }
