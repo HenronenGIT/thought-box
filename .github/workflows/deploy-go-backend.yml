@@ -73,4 +73,12 @@ jobs:
       - name: Smoke test
         run: |
           URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" --region "$GCP_REGION" --format='value(status.url)')"
-          curl --fail --silent --show-error "$URL/healthz"
+          echo "Cloud Run URL: $URL"
+          gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --format='table(status.latestReadyRevisionName,status.traffic[0].revisionName,status.traffic[0].percent,spec.template.spec.containers[0].image)'
+          echo "GET /"
+          curl --silent --show-error --include "$URL/" || true
+          echo
+          echo "GET /healthz"
+          curl --fail --silent --show-error --include "$URL/healthz"
