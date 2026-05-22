@@ -2,6 +2,12 @@ name: Deploy Go backend
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/api-go/**
+      - .github/workflows/deploy-go-backend.yml
 
 jobs:
   deploy:
