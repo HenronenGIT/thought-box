@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestFromMapRequiresPostgresURLWithCredentials(t *testing.T) {
 	base := []string{
@@ -22,5 +25,8 @@ func TestFromMapRequiresPostgresURLWithCredentials(t *testing.T) {
 	}
 	if cfg.Port != "8080" {
 		t.Fatalf("expected default port, got %s", cfg.Port)
+	}
+	if !strings.Contains(cfg.DatabaseURL, "default_query_exec_mode=simple_protocol") {
+		t.Fatalf("expected simple protocol database URL, got %s", cfg.DatabaseURL)
 	}
 }

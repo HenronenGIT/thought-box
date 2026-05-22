@@ -52,6 +52,10 @@ func fromMap(environ []string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	databaseURL, err = normalizeDatabaseURL(databaseURL)
+	if err != nil {
+		return Config{}, err
+	}
 	if err := validateDatabaseURL(databaseURL); err != nil {
 		return Config{}, err
 	}
@@ -191,4 +195,17 @@ func validateDatabaseURL(value string) error {
 		return fmt.Errorf("DATABASE_URL must include host")
 	}
 	return nil
+}
+
+func normalizeDatabaseURL(value string) (string, error) {
+	u, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("DATABASE_URL is invalid: %w", err)
+	}
+	query := u.Query()
+	if query.Get("default_query_exec_mode") == "" {
+		query.Set("default_query_exec_mode", "simple_protocol")
+	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
