@@ -54,7 +54,9 @@ jobs:
           import sys
           from urllib.parse import quote, urlsplit, urlunsplit
 
-          raw = os.environ["DATABASE_URL"].strip()
+          raw = os.environ["DATABASE_URL"].strip().strip('"').strip("'")
+          if raw.startswith("DATABASE_URL="):
+              raw = raw.removeprefix("DATABASE_URL=").strip().strip('"').strip("'")
           if raw.startswith("jdbc:"):
               user_raw = os.environ.get("DATABASE_USER", "")
               password_raw = os.environ.get("DATABASE_PASSWORD", "")
