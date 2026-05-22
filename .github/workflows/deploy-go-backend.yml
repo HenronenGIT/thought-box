@@ -18,8 +18,6 @@ jobs:
       ARTIFACT_REPOSITORY: ${{ secrets.ARTIFACT_REPOSITORY }}
       CLOUD_RUN_SERVICE: thought-box-api-go
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DATABASE_USER: ${{ secrets.DATABASE_USER }}
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'http://localhost:3000' }}
       S3_BUCKET: ${{ secrets.S3_BUCKET }}
       S3_REGION: ${{ secrets.S3_REGION }}
@@ -49,32 +47,6 @@ jobs:
               exit 1
             fi
           done
-          python3 <<'PY' >> "$GITHUB_ENV"
-          import os
-          import sys
-          from urllib.parse import quote, urlsplit, urlunsplit
-
-          raw = os.environ["DATABASE_URL"].strip().strip('"').strip("'")
-          if raw.startswith("DATABASE_URL="):
-              raw = raw.removeprefix("DATABASE_URL=").strip().strip('"').strip("'")
-          if raw.startswith("jdbc:"):
-              user_raw = os.environ.get("DATABASE_USER", "")
-              password_raw = os.environ.get("DATABASE_PASSWORD", "")
-              if not user_raw or not password_raw:
-                  print("::error::DATABASE_USER and DATABASE_PASSWORD are required when DATABASE_URL is JDBC", file=sys.stderr)
-                  raise SystemExit(1)
-              raw = raw.removeprefix("jdbc:")
-              parsed = urlsplit(raw)
-              user = quote(user_raw, safe="")
-              password = quote(password_raw, safe="")
-              raw = urlunsplit((parsed.scheme, f"{user}:{password}@{parsed.netloc}", parsed.path, parsed.query, parsed.fragment))
-
-          if not (raw.startswith("postgres://") or raw.startswith("postgresql://")):
-              print("::error::DATABASE_URL must normalize to postgres:// or postgresql://", file=sys.stderr)
-              raise SystemExit(1)
-
-          print("DATABASE_URL=" + raw)
-          PY
 
       - uses: google-github-actions/auth@v2
         with:
