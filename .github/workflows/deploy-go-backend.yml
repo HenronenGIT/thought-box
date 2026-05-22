@@ -6,8 +6,8 @@ on:
     branches:
       - main
     paths:
-      - apps/api-go/**
-      - .github/workflows/deploy-go-backend.yml
+      - "apps/api-go/**"
+      - ".github/workflows/deploy-go-backend.yml"
 
 jobs:
   deploy:
