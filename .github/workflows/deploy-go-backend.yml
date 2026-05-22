@@ -49,29 +49,30 @@ jobs:
               exit 1
             fi
           done
-          case "$DATABASE_URL" in
-            postgres://*|postgresql://*) ;;
-            jdbc:*)
-              if [ -z "${DATABASE_USER:-}" ] || [ -z "${DATABASE_PASSWORD:-}" ]; then
-                echo "::error::DATABASE_USER and DATABASE_PASSWORD are required when DATABASE_URL is JDBC"
-                exit 1
-              fi
-              python3 <<'PY' >> "$GITHUB_ENV"
+          python3 <<'PY' >> "$GITHUB_ENV"
           import os
+          import sys
           from urllib.parse import quote, urlsplit, urlunsplit
 
-          raw = os.environ["DATABASE_URL"].removeprefix("jdbc:")
-          parsed = urlsplit(raw)
-          user = quote(os.environ["DATABASE_USER"], safe="")
-          password = quote(os.environ["DATABASE_PASSWORD"], safe="")
-          print("DATABASE_URL=" + urlunsplit((parsed.scheme, f"{user}:{password}@{parsed.netloc}", parsed.path, parsed.query, parsed.fragment)))
+          raw = os.environ["DATABASE_URL"].strip()
+          if raw.startswith("jdbc:"):
+              user_raw = os.environ.get("DATABASE_USER", "")
+              password_raw = os.environ.get("DATABASE_PASSWORD", "")
+              if not user_raw or not password_raw:
+                  print("::error::DATABASE_USER and DATABASE_PASSWORD are required when DATABASE_URL is JDBC", file=sys.stderr)
+                  raise SystemExit(1)
+              raw = raw.removeprefix("jdbc:")
+              parsed = urlsplit(raw)
+              user = quote(user_raw, safe="")
+              password = quote(password_raw, safe="")
+              raw = urlunsplit((parsed.scheme, f"{user}:{password}@{parsed.netloc}", parsed.path, parsed.query, parsed.fragment))
+
+          if not (raw.startswith("postgres://") or raw.startswith("postgresql://")):
+              print("::error::DATABASE_URL must normalize to postgres:// or postgresql://", file=sys.stderr)
+              raise SystemExit(1)
+
+          print("DATABASE_URL=" + raw)
           PY
-              ;;
-            *)
-              echo "::error::DATABASE_URL must be a pgx-native postgres:// URL, not JDBC"
-              exit 1
-              ;;
-          esac
 
       - uses: google-github-actions/auth@v2
         with:
