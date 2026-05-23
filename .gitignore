@@ -1,12 +1,9 @@
-.gradle/
-build/
 .env
 .env.local
 node_modules/
 .next/
 out/
 .env.production
-.kotlin
 gcp-sa.json
 .DS_Store
 brand-names.md
