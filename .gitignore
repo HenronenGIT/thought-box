@@ -7,4 +7,5 @@ out/
 gcp-sa.json
 .DS_Store
 brand-names.md
-api
+/apps/api-go/api
+*.tsbuildinfo
