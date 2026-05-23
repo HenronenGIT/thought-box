@@ -397,6 +397,45 @@ audio {
   background: var(--color-surface);
 }
 
+.echoes {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.echo {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.echo-label {
+  color: var(--color-ink-600);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.echo-content {
+  margin: 0;
+  color: var(--color-ink-900);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.echo-more {
+  display: flex;
+  align-items: center;
+}
+
+.echo-mode-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 24px, var(--container));

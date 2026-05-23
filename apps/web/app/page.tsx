@@ -23,12 +23,125 @@ type Thought = {
   last_error: string | null;
 };
 
+type Echo = {
+  id: string;
+  thought_id: string;
+  mode: string;
+  content: string | null;
+  status: string;
+  is_default: boolean;
+};
+
 const categories = ["idea", "observation", "feeling", "learning"];
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+const echoModeLabels: Record<string, string> = {
+  mirror: "A reflection",
+  challenger: "A challenge",
+  reframer: "Another angle",
+  extender: "Where to go next",
+};
 
 function pickMimeType() {
   const candidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"];
   return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+}
+
+const echoModes = ["mirror", "challenger", "reframer", "extender"] as const;
+const maxEchoesPerThought = 4;
+
+function EchoesSection({ thoughtId, thoughtStatus }: { thoughtId: string; thoughtStatus: string }) {
+  const [echoes, setEchoes] = useState<Echo[]>([]);
+  const [pollKey, setPollKey] = useState(0);
+  const [selecting, setSelecting] = useState(false);
+
+  useEffect(() => {
+    if (thoughtStatus !== "done") return;
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const tick = async () => {
+      attempts += 1;
+      try {
+        const res = await fetch(`${apiBase}/thoughts/${thoughtId}/echoes`);
+        if (!res.ok) return;
+        const body = (await res.json()) as { items: Echo[] };
+        if (cancelled) return;
+        setEchoes(body.items);
+        const hasReady = body.items.some((e) => e.status === "ready");
+        const stillWaiting = body.items.some((e) => e.status === "pending" || e.status === "generating");
+        if (stillWaiting || (!hasReady && attempts < maxAttempts)) {
+          timer = window.setTimeout(tick, 2000);
+        }
+      } catch {
+        // swallow — silent failure
+      }
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [thoughtId, thoughtStatus, pollKey]);
+
+  async function requestEcho(mode: string) {
+    setSelecting(false);
+    try {
+      const res = await fetch(`${apiBase}/thoughts/${thoughtId}/echoes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      if (res.ok) {
+        const created = (await res.json()) as Echo;
+        setEchoes((current) => [...current, created]);
+      }
+    } catch {
+      // silent failure
+    } finally {
+      setPollKey((k) => k + 1);
+    }
+  }
+
+  const ready = echoes.filter((e) => e.status === "ready" && e.content);
+  const activeEchoes = echoes.filter((e) => e.status !== "failed");
+  const presentModes = new Set(activeEchoes.map((e) => e.mode));
+  const remainingModes = echoModes.filter((m) => !presentModes.has(m));
+  const atCap = activeEchoes.length >= maxEchoesPerThought;
+  const canRequestMore = thoughtStatus === "done" && !atCap && remainingModes.length > 0;
+
+  if (ready.length === 0 && !canRequestMore) return null;
+
+  return (
+    <div className="echoes">
+      {ready.map((echo) => (
+        <div className="echo" key={echo.id}>
+          <div className="echo-label">{echoModeLabels[echo.mode] ?? echo.mode}</div>
+          <p className="echo-content">{echo.content}</p>
+        </div>
+      ))}
+      {canRequestMore ? (
+        <div className="echo-more">
+          {selecting ? (
+            <div className="echo-mode-picker">
+              {remainingModes.map((mode) => (
+                <button key={mode} className="chip" onClick={() => requestEcho(mode)}>
+                  {echoModeLabels[mode] ?? mode}
+                </button>
+              ))}
+              <button className="chip" onClick={() => setSelecting(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="button-secondary" onClick={() => setSelecting(true)}>
+              More angles
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function Home() {
@@ -203,6 +316,7 @@ export default function Home() {
               <audio controls src={`${apiBase}/thoughts/${thought.id}/audio`} />
               {thought.enrichment ? <div className="tags">{thought.enrichment.tags.join(", ")}</div> : null}
               {thought.last_error ? <div className="error">{thought.last_error}</div> : null}
+              <EchoesSection thoughtId={thought.id} thoughtStatus={thought.status} />
             </article>
           ))}
           {nextCursor ? (
