@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/config"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/domain"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/echo"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/enrichment"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/httpapi"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/migrations"
@@ -59,6 +61,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	echoRepo := repository.NewEchoRepository(pool)
+	if err := echoRepo.RecoverStuckEchoes(ctx); err != nil {
+		logger.Error("echo startup recovery failed", "error", err)
+		os.Exit(1)
+	}
+
 	blobStore, err := storage.NewS3Store(ctx, cfg.S3)
 	if err != nil {
 		logger.Error("s3 setup failed", "error", err)
@@ -73,9 +81,24 @@ func main() {
 			logger,
 		)
 		go worker.Run(ctx)
+
+		echoWorker := pipeline.NewEchoPipeline(
+			echoRepo,
+			echo.NewOpenAIGenerator(cfg.OpenAIAPIKey),
+			logger,
+			[]domain.Category{
+				domain.CategoryFeeling,
+				domain.CategoryIdea,
+				domain.CategoryObservation,
+				domain.CategoryLearning,
+			},
+			string(echo.Model),
+			echo.PromptVersion,
+		)
+		go echoWorker.Run(ctx)
 	}
 
-	router := httpapi.NewRouter(cfg, logger, repo, blobStore, user.SeededResolver{})
+	router := httpapi.NewRouter(cfg, logger, repo, echoRepo, blobStore, user.SeededResolver{})
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           router,

@@ -23,7 +23,7 @@ func TestParseLimit(t *testing.T) {
 }
 
 func TestHealthRouteAvoidsCloudRunReservedPath(t *testing.T) {
-	router := NewRouter(config.Config{AppEnv: "test"}, slog.Default(), nil, nil, nil)
+	router := NewRouter(config.Config{AppEnv: "test"}, slog.Default(), nil, nil, nil, nil)
 
 	health := httptest.NewRecorder()
 	router.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/health", nil))

@@ -24,12 +24,13 @@ type Server struct {
 	config       config.Config
 	logger       *slog.Logger
 	repository   *repository.ThoughtRepository
+	echoes       echoesStore
 	blobStore    storage.Store
 	userResolver user.Resolver
 }
 
-func NewRouter(cfg config.Config, logger *slog.Logger, repo *repository.ThoughtRepository, store storage.Store, resolver user.Resolver) http.Handler {
-	server := Server{config: cfg, logger: logger, repository: repo, blobStore: store, userResolver: resolver}
+func NewRouter(cfg config.Config, logger *slog.Logger, repo *repository.ThoughtRepository, echoes echoesStore, store storage.Store, resolver user.Resolver) http.Handler {
+	server := Server{config: cfg, logger: logger, repository: repo, echoes: echoes, blobStore: store, userResolver: resolver}
 	router := chi.NewRouter()
 	router.Use(server.recoverPanic)
 	router.Use(server.correlationID)
@@ -41,6 +42,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, repo *repository.ThoughtR
 	router.Get("/thoughts", server.listThoughts)
 	router.Get("/thoughts/{id}", server.getThought)
 	router.Get("/thoughts/{id}/audio", server.getThoughtAudio)
+	router.Get("/thoughts/{id}/echoes", server.listEchoes)
+	router.Post("/thoughts/{id}/echoes", server.createEcho)
 	return router
 }
 
