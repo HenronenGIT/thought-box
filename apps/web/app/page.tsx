@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MobileCaptureView } from "./components/capture/MobileCaptureView";
+import { useIsMobile } from "./design-system/useIsMobile";
 
 type ApiConfig = {
   max_duration_ms: number;
@@ -33,7 +35,9 @@ type Echo = {
 };
 
 const categories = ["idea", "observation", "feeling", "learning"];
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+// All API calls go through Next.js's /api proxy (configured in next.config.ts)
+// so web and API are same-origin and the session cookie travels naturally.
+const apiBase = "/api";
 
 const echoModeLabels: Record<string, string> = {
   mirror: "A reflection",
@@ -145,6 +149,7 @@ function EchoesSection({ thoughtId, thoughtStatus }: { thoughtId: string; though
 }
 
 export default function Home() {
+  const isMobile = useIsMobile();
   const [health, setHealth] = useState("checking");
   const [config, setConfig] = useState<ApiConfig | null>(null);
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -154,6 +159,8 @@ export default function Home() {
   const [category, setCategory] = useState<string | null>(null);
   const [tag, setTag] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [me, setMe] = useState<{ email: string; displayName: string } | null>(null);
+  const [reviewThoughtId, setReviewThoughtId] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const startedRef = useRef<number>(0);
@@ -161,23 +168,33 @@ export default function Home() {
 
   const activeTag = tag.trim();
   const healthState = health.startsWith("ok") ? "ok" : health.startsWith("bad") ? "bad" : health;
-  const filteredUrl = useMemo(() => {
-    const url = new URL("/thoughts", apiBase);
-    if (category) url.searchParams.set("category", category);
-    if (activeTag) url.searchParams.set("tag", activeTag);
-    return url;
+  const filteredQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (activeTag) params.set("tag", activeTag);
+    return params;
   }, [category, activeTag]);
+  const reviewThought = reviewThoughtId ? thoughts.find((thought) => thought.id === reviewThoughtId) ?? null : null;
+  const reviewCategory = reviewThought?.enrichment?.category ?? null;
+  const reviewTranscript = reviewThought?.transcript ?? null;
 
-  async function fetchJson<T>(path: string | URL): Promise<T> {
-    const response = await fetch(path instanceof URL ? path : `${apiBase}${path}`);
+  async function fetchJson<T>(path: string): Promise<T> {
+    const response = await fetch(`${apiBase}${path}`);
+    if (response.status === 401) {
+      window.location.assign("/login");
+      throw new Error("unauthorized");
+    }
     if (!response.ok) throw new Error(await response.text());
     return response.json();
   }
 
   async function refreshList(cursor?: string) {
-    const url = new URL(filteredUrl);
-    if (cursor) url.searchParams.set("before", cursor);
-    const page = await fetchJson<{ items: Thought[]; next_cursor: string | null }>(url);
+    const params = new URLSearchParams(filteredQuery);
+    if (cursor) params.set("before", cursor);
+    const qs = params.toString();
+    const page = await fetchJson<{ items: Thought[]; next_cursor: string | null }>(
+      "/thoughts" + (qs ? "?" + qs : ""),
+    );
     setThoughts((current) => (cursor ? [...current, ...page.items] : page.items));
     setNextCursor(page.next_cursor);
   }
@@ -187,11 +204,14 @@ export default function Home() {
       .then((body) => setHealth(`${body.ok ? "ok" : "bad"} / ${body.env}`))
       .catch(() => setHealth("offline"));
     fetchJson<ApiConfig>("/config").then(setConfig).catch((err) => setError(err.message));
+    fetchJson<{ user_id: string; email?: string; display_name?: string }>("/me")
+      .then((u) => setMe({ email: u.email ?? "", displayName: u.display_name ?? "" }))
+      .catch(() => {/* fetchJson already redirected on 401 */});
   }, []);
 
   useEffect(() => {
     refreshList().catch((err) => setError(err.message));
-  }, [filteredUrl]);
+  }, [filteredQuery]);
 
   useEffect(() => {
     const pending = thoughts.filter((thought) => ["pending", "transcribing", "enriching"].includes(thought.status));
@@ -252,80 +272,124 @@ export default function Home() {
     form.append("duration_ms", String(durationMs));
     form.append("audio", blob, "thought");
     const response = await fetch(`${apiBase}/thoughts`, { method: "POST", body: form });
+    if (response.status === 401) {
+      window.location.assign("/login");
+      return;
+    }
     if (!response.ok) throw new Error(await response.text());
+    const created = (await response.json()) as { id: string };
+    setReviewThoughtId(created.id);
     await refreshList();
     setElapsedMs(0);
   }
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <div className="brand-stack">
-          <div className="eyebrow">Oxide system</div>
-          <h1 className="page-title">Thought Box</h1>
-          <p className="page-subtitle">Capture voice notes, let the pipeline transcribe and enrich them, then scan the archive by category or tag.</p>
+      {isMobile ? (
+        <div className="mobile-only">
+          <MobileCaptureView
+            category={reviewCategory}
+            disabled={!config}
+            elapsedMs={elapsedMs}
+            error={error}
+            recording={recording}
+            transcript={reviewTranscript}
+            onStart={startRecording}
+            onStop={stopRecording}
+          />
         </div>
-        <div className="status-pill" data-state={healthState}>{health}</div>
-      </header>
+      ) : null}
 
-      <div className="main-grid">
-        <aside className="panel" aria-label="Capture and filters">
-          <div className="panel-header">
-            <h2 className="section-title">Capture</h2>
-            <p className="section-copy">Record a thought and send it into the enrichment queue.</p>
+      {!isMobile ? (
+      <div className="desktop-only">
+        <header className="app-header">
+          <div className="brand-stack">
+            <div className="eyebrow">Oxide system</div>
+            <h1 className="page-title">Thought Box</h1>
+            <p className="page-subtitle">Capture voice notes, let the pipeline transcribe and enrich them, then scan the archive by category or tag.</p>
           </div>
-
-          <div className="recorder-control">
-            <button className={`record-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording}>
-              {recording ? "Stop" : "Rec"}
-            </button>
-            <div>
-              <span className="timer-value">{Math.floor(elapsedMs / 1000)}s</span>
-              {config ? <div className="meta">max {Math.floor(config.max_duration_ms / 1000)}s</div> : null}
-            </div>
-          </div>
-
-          {error ? <div className="error">{error}</div> : null}
-
-          <div className="filter-stack">
-            <div className="panel-header">
-              <h2 className="section-title">Filters</h2>
-              <p className="section-copy">Refine the feed without leaving capture mode.</p>
-            </div>
-            <div className="chip-row">
-              {categories.map((item) => (
-                <button key={item} className={`chip ${category === item ? "active" : ""}`} onClick={() => setCategory(category === item ? null : item)}>
-                  {item}
+          <div className="header-meta">
+            {me ? (
+              <>
+                <div className="user-pill" title={me.email}>
+                  {me.displayName || me.email || "Signed in"}
+                </div>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={async () => {
+                    await fetch(`${apiBase}/auth/logout`, { method: "POST" });
+                    window.location.assign("/login");
+                  }}
+                >
+                  Sign out
                 </button>
-              ))}
-            </div>
-            <input className="tag-input" value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Filter by tag" />
+              </>
+            ) : null}
+            <div className="status-pill" data-state={healthState}>{health}</div>
           </div>
-        </aside>
+        </header>
 
-        <section className="thoughts" aria-label="Thought feed">
-          {thoughts.map((thought) => (
-            <article className="thought-card" key={thought.id}>
-              <div className="card-meta-row">
-                <div className="meta">{new Date(thought.created_at).toLocaleString()} / {thought.status}</div>
-                {thought.enrichment ? <div className="category-mark">{thought.enrichment.category}</div> : null}
-              </div>
-              <h2>{thought.enrichment?.title ?? "Untitled thought"}</h2>
-              {thought.enrichment ? <p>{thought.enrichment.summary}</p> : null}
-              {thought.transcript ? <p>{thought.transcript}</p> : null}
-              <audio controls src={`${apiBase}/thoughts/${thought.id}/audio`} />
-              {thought.enrichment ? <div className="tags">{thought.enrichment.tags.join(", ")}</div> : null}
-              {thought.last_error ? <div className="error">{thought.last_error}</div> : null}
-              <EchoesSection thoughtId={thought.id} thoughtStatus={thought.status} />
-            </article>
-          ))}
-          {nextCursor ? (
-            <div className="load-row">
-              <button className="button-secondary" onClick={() => refreshList(nextCursor)}>Load more</button>
+        <div className="main-grid">
+          <aside className="panel" aria-label="Capture and filters">
+            <div className="panel-header">
+              <h2 className="section-title">Capture</h2>
+              <p className="section-copy">Record a thought and send it into the enrichment queue.</p>
             </div>
-          ) : null}
-        </section>
+
+            <div className="recorder-control">
+              <button className={`record-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording}>
+                {recording ? "Stop" : "Rec"}
+              </button>
+              <div>
+                <span className="timer-value">{Math.floor(elapsedMs / 1000)}s</span>
+                {config ? <div className="meta">max {Math.floor(config.max_duration_ms / 1000)}s</div> : null}
+              </div>
+            </div>
+
+            {error ? <div className="error">{error}</div> : null}
+
+            <div className="filter-stack">
+              <div className="panel-header">
+                <h2 className="section-title">Filters</h2>
+                <p className="section-copy">Refine the feed without leaving capture mode.</p>
+              </div>
+              <div className="chip-row">
+                {categories.map((item) => (
+                  <button key={item} className={`chip ${category === item ? "active" : ""}`} onClick={() => setCategory(category === item ? null : item)}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <input className="tag-input" value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Filter by tag" />
+            </div>
+          </aside>
+
+          <section className="thoughts" aria-label="Thought feed">
+            {thoughts.map((thought) => (
+              <article className="thought-card" key={thought.id}>
+                <div className="card-meta-row">
+                  <div className="meta">{new Date(thought.created_at).toLocaleString()} / {thought.status}</div>
+                  {thought.enrichment ? <div className="category-mark">{thought.enrichment.category}</div> : null}
+                </div>
+                <h2>{thought.enrichment?.title ?? "Untitled thought"}</h2>
+                {thought.enrichment ? <p>{thought.enrichment.summary}</p> : null}
+                {thought.transcript ? <p>{thought.transcript}</p> : null}
+                <audio controls src={`${apiBase}/thoughts/${thought.id}/audio`} />
+                {thought.enrichment ? <div className="tags">{thought.enrichment.tags.join(", ")}</div> : null}
+                {thought.last_error ? <div className="error">{thought.last_error}</div> : null}
+                <EchoesSection thoughtId={thought.id} thoughtStatus={thought.status} />
+              </article>
+            ))}
+            {nextCursor ? (
+              <div className="load-row">
+                <button className="button-secondary" onClick={() => refreshList(nextCursor)}>Load more</button>
+              </div>
+            ) : null}
+          </section>
+        </div>
       </div>
+      ) : null}
     </main>
   );
 }

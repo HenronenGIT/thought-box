@@ -6,9 +6,17 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"time"
+
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/config"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/user"
 )
 
-const correlationIDHeader = "X-Correlation-Id"
+const (
+	correlationIDHeader = "X-Correlation-Id"
+	sessionCookieName   = "session"
+	stateCookieName     = "oauth_state"
+)
 
 func (s Server) correlationID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +56,7 @@ func (s Server) cors(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Correlation-Id")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		if r.Method == http.MethodOptions {
 			if origin != "" && !slices.Contains(s.config.CorsAllowedOrigins, origin) {
@@ -61,6 +70,80 @@ func (s Server) cors(next http.Handler) http.Handler {
 	})
 }
 
+// requireSession reads the session cookie, validates it, and attaches the
+// resolved user id to the request context. Any failure clears the cookie and
+// returns 401 so the client can re-authenticate.
+func (s Server) requireSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(sessionCookieName)
+		if err != nil || cookie.Value == "" {
+			writeError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		userID, err := s.sessions.Lookup(r.Context(), cookie.Value)
+		if err != nil {
+			clearSessionCookie(w, s.config)
+			writeError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		ctx := user.WithUserID(r.Context(), userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func setSessionCookie(w http.ResponseWriter, cfg config.Config, value string, ttl time.Duration) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isProd(cfg),
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(ttl),
+		MaxAge:   int(ttl.Seconds()),
+	})
+}
+
+func clearSessionCookie(w http.ResponseWriter, cfg config.Config) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isProd(cfg),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func setStateCookie(w http.ResponseWriter, cfg config.Config, value string, ttl time.Duration) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    value,
+		Path:     "/auth/google",
+		HttpOnly: true,
+		Secure:   isProd(cfg),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(ttl.Seconds()),
+	})
+}
+
+func clearStateCookie(w http.ResponseWriter, cfg config.Config) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    "",
+		Path:     "/auth/google",
+		HttpOnly: true,
+		Secure:   isProd(cfg),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func isProd(cfg config.Config) bool {
+	return cfg.AppEnv == "prod" || cfg.AppEnv == "production"
+}
+
 func randomID() string {
 	var bytes [16]byte
 	if _, err := rand.Read(bytes[:]); err != nil {
@@ -68,3 +151,4 @@ func randomID() string {
 	}
 	return hex.EncodeToString(bytes[:])
 }
+

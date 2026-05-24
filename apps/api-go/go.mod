@@ -12,9 +12,11 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/openai/openai-go v1.12.0
 	github.com/pressly/goose/v3 v3.26.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.23 // indirect
