@@ -304,9 +304,7 @@ export default function Home() {
       <div className="desktop-only">
         <header className="app-header">
           <div className="brand-stack">
-            <div className="eyebrow">Oxide system</div>
             <h1 className="page-title">Thought Box</h1>
-            <p className="page-subtitle">Capture voice notes, let the pipeline transcribe and enrich them, then scan the archive by category or tag.</p>
           </div>
           <div className="header-meta">
             {me ? (
