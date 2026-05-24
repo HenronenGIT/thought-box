@@ -26,6 +26,22 @@
 - Create separate dev/prod API keys.
 - Set `OPENAI_API_KEY` per environment.
 
+## Google OAuth (sign-in)
+
+- In the GCP console: APIs & Services → Credentials → Create Credentials → OAuth client ID.
+- Application type: **Web application**.
+- Authorized redirect URIs:
+  - Dev: `http://localhost:8080/auth/google/callback`
+  - Prod: `https://<your-api-host>/auth/google/callback`
+- Copy the generated client ID + secret into `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`.
+- Set `GOOGLE_OAUTH_REDIRECT_URL` to the exact URI registered above for that environment.
+- Set `WEB_BASE_URL` to where users should land after sign-in (`http://localhost:3000` in dev).
+- Set `SESSION_SIGNING_KEY` to a base64-encoded 32 random bytes. Generate with:
+  ```
+  openssl rand -base64 32
+  ```
+  Use a different key per environment. Treat it as a secret — rotating it logs all users out.
+
 ## Local run
 
 - Make sure Docker Desktop is running.

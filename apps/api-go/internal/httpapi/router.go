@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -10,6 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/google"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/state"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/config"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/domain"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/repository"
@@ -20,6 +23,26 @@ import (
 	"github.com/google/uuid"
 )
 
+// sessionsStore is the shape the HTTP layer needs from the session module.
+// Extracted as an interface so tests can substitute a stub without standing
+// up a real database.
+type sessionsStore interface {
+	Issue(ctx context.Context, userID uuid.UUID, ttl time.Duration) (string, error)
+	Lookup(ctx context.Context, rawToken string) (uuid.UUID, error)
+	Revoke(ctx context.Context, rawToken string) error
+}
+
+// usersStore is the shape the HTTP layer needs from the users repository.
+type usersStore interface {
+	UpsertByGoogleSub(ctx context.Context, sub, email, displayName string) (domain.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+}
+
+// allowlistGate gates which Google-authenticated emails may complete sign-in.
+type allowlistGate interface {
+	IsAllowed(ctx context.Context, email string) (bool, error)
+}
+
 type Server struct {
 	config       config.Config
 	logger       *slog.Logger
@@ -27,23 +50,72 @@ type Server struct {
 	echoes       echoesStore
 	blobStore    storage.Store
 	userResolver user.Resolver
+	sessions     sessionsStore
+	users        usersStore
+	allowlist    allowlistGate
+	state        *state.Signer
+	google       *google.Client
 }
 
-func NewRouter(cfg config.Config, logger *slog.Logger, repo *repository.ThoughtRepository, echoes echoesStore, store storage.Store, resolver user.Resolver) http.Handler {
-	server := Server{config: cfg, logger: logger, repository: repo, echoes: echoes, blobStore: store, userResolver: resolver}
+// Dependencies bundles the collaborators NewRouter wires together. Optional
+// fields (the auth modules and userResolver) may be nil in tests that don't
+// exercise authenticated routes.
+type Dependencies struct {
+	Config       config.Config
+	Logger       *slog.Logger
+	Thoughts     *repository.ThoughtRepository
+	Echoes       echoesStore
+	BlobStore    storage.Store
+	Sessions     sessionsStore
+	Users        usersStore
+	Allowlist    allowlistGate
+	State        *state.Signer
+	Google       *google.Client
+	UserResolver user.Resolver
+}
+
+func NewRouter(deps Dependencies) http.Handler {
+	resolver := deps.UserResolver
+	if resolver == nil {
+		resolver = user.ContextResolver{}
+	}
+	server := Server{
+		config:       deps.Config,
+		logger:       deps.Logger,
+		repository:   deps.Thoughts,
+		echoes:       deps.Echoes,
+		blobStore:    deps.BlobStore,
+		userResolver: resolver,
+		sessions:     deps.Sessions,
+		users:        deps.Users,
+		allowlist:    deps.Allowlist,
+		state:        deps.State,
+		google:       deps.Google,
+	}
+
 	router := chi.NewRouter()
 	router.Use(server.recoverPanic)
 	router.Use(server.correlationID)
 	router.Use(server.cors)
+
 	router.Get("/health", server.health)
 	router.Get("/config", server.clientConfig)
-	router.Get("/me", server.me)
-	router.Post("/thoughts", server.createThought)
-	router.Get("/thoughts", server.listThoughts)
-	router.Get("/thoughts/{id}", server.getThought)
-	router.Get("/thoughts/{id}/audio", server.getThoughtAudio)
-	router.Get("/thoughts/{id}/echoes", server.listEchoes)
-	router.Post("/thoughts/{id}/echoes", server.createEcho)
+
+	// Auth routes are public — they're how users acquire a session.
+	router.Get("/auth/google/login", server.googleLogin)
+	router.Get("/auth/google/callback", server.googleCallback)
+	router.Post("/auth/logout", server.logout)
+
+	router.Group(func(r chi.Router) {
+		r.Use(server.requireSession)
+		r.Get("/me", server.me)
+		r.Post("/thoughts", server.createThought)
+		r.Get("/thoughts", server.listThoughts)
+		r.Get("/thoughts/{id}", server.getThought)
+		r.Get("/thoughts/{id}/audio", server.getThoughtAudio)
+		r.Get("/thoughts/{id}/echoes", server.listEchoes)
+		r.Post("/thoughts/{id}/echoes", server.createEcho)
+	})
 	return router
 }
 
@@ -61,7 +133,14 @@ func (s Server) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"user_id": userID.String()})
+	resp := map[string]string{"user_id": userID.String()}
+	if s.users != nil {
+		if u, err := s.users.FindByID(r.Context(), userID); err == nil && u != nil {
+			resp["email"] = u.Email
+			resp["display_name"] = u.DisplayName
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s Server) createThought(w http.ResponseWriter, r *http.Request) {

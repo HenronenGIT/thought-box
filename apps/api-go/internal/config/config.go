@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -19,7 +20,18 @@ type Config struct {
 	S3                 S3
 	OpenAIAPIKey       string
 	WorkerEnabled      bool
+	GoogleOAuth        GoogleOAuth
+	WebBaseURL         string
+	SessionSigningKey  []byte
 }
+
+type GoogleOAuth struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
+const sessionSigningKeyBytes = 32
 
 type Limits struct {
 	MaxDurationMs int64 `json:"max_duration_ms"`
@@ -81,6 +93,27 @@ func fromMap(environ []string) (Config, error) {
 		return Config{}, err
 	}
 
+	googleClientID, err := required(env, "GOOGLE_OAUTH_CLIENT_ID")
+	if err != nil {
+		return Config{}, err
+	}
+	googleClientSecret, err := required(env, "GOOGLE_OAUTH_CLIENT_SECRET")
+	if err != nil {
+		return Config{}, err
+	}
+	googleRedirectURL, err := required(env, "GOOGLE_OAUTH_REDIRECT_URL")
+	if err != nil {
+		return Config{}, err
+	}
+	webBaseURL, err := required(env, "WEB_BASE_URL")
+	if err != nil {
+		return Config{}, err
+	}
+	signingKey, err := requiredSigningKey(env, "SESSION_SIGNING_KEY")
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		AppEnv:             optional(env, "APP_ENV", "dev"),
 		Port:               optional(env, "PORT", "8080"),
@@ -101,7 +134,29 @@ func fromMap(environ []string) (Config, error) {
 		},
 		OpenAIAPIKey:  openAIAPIKey,
 		WorkerEnabled: optionalBool(env, "WORKER_ENABLED", true),
+		GoogleOAuth: GoogleOAuth{
+			ClientID:     googleClientID,
+			ClientSecret: googleClientSecret,
+			RedirectURL:  googleRedirectURL,
+		},
+		WebBaseURL:        webBaseURL,
+		SessionSigningKey: signingKey,
 	}, nil
+}
+
+func requiredSigningKey(env map[string]string, name string) ([]byte, error) {
+	raw, err := required(env, name)
+	if err != nil {
+		return nil, err
+	}
+	decoded, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s must be base64-encoded: %w", name, err)
+	}
+	if len(decoded) != sessionSigningKeyBytes {
+		return nil, fmt.Errorf("%s must decode to %d bytes, got %d", name, sessionSigningKeyBytes, len(decoded))
+	}
+	return decoded, nil
 }
 
 func (c Config) DatabaseHost() string {

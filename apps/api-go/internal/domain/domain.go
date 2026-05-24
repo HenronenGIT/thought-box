@@ -63,6 +63,14 @@ type ThoughtEnrichment struct {
 	PromptVersion string
 }
 
+type User struct {
+	ID          uuid.UUID
+	Email       string
+	GoogleSub   string
+	DisplayName string
+	CreatedAt   time.Time
+}
+
 type AudioBlob struct {
 	Key       string
 	MimeType  string

@@ -10,6 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/allowlist"
+	googleauth "github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/google"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/session"
+	"github.com/HenronenGIT/thought-box/apps/api-go/internal/auth/state"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/config"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/domain"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/echo"
@@ -20,7 +24,6 @@ import (
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/repository"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/storage"
 	"github.com/HenronenGIT/thought-box/apps/api-go/internal/transcription"
-	"github.com/HenronenGIT/thought-box/apps/api-go/internal/user"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -98,7 +101,18 @@ func main() {
 		go echoWorker.Run(ctx)
 	}
 
-	router := httpapi.NewRouter(cfg, logger, repo, echoRepo, blobStore, user.SeededResolver{})
+	router := httpapi.NewRouter(httpapi.Dependencies{
+		Config:    cfg,
+		Logger:    logger,
+		Thoughts:  repo,
+		Echoes:    echoRepo,
+		BlobStore: blobStore,
+		Sessions:  session.NewStore(pool),
+		Users:     repository.NewUserRepository(pool),
+		Allowlist: allowlist.New(pool),
+		State:     state.New(cfg.SessionSigningKey, nil),
+		Google:    googleauth.New(cfg.GoogleOAuth.ClientID, cfg.GoogleOAuth.ClientSecret, cfg.GoogleOAuth.RedirectURL),
+	})
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
